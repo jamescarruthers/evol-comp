@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Evolutionary Composition Generator</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <header>
+      <h1>Evolutionary Composition Generator</h1>
+    </header>
+
+    <section id="palette-section">
+      <div class="palette-buttons">
+        <button data-strategy="complementary">Complementary</button>
+        <button data-strategy="analogous">Analogous</button>
+        <button data-strategy="triadic">Triadic</button>
+        <button data-strategy="split-complementary">Split-Comp</button>
+        <button data-strategy="monochromatic">Mono</button>
+        <button data-strategy="random" class="active">Random</button>
+      </div>
+      <div id="palette-swatches"></div>
+    </section>
+
+    <main>
+      <div id="best-preview">
+        <canvas id="best-canvas" width="400" height="400"></canvas>
+        <div id="best-scores">
+          <p class="muted">Click "Start Evolution" to begin</p>
+        </div>
+      </div>
+
+      <div id="population-grid"></div>
+    </main>
+
+    <section id="controls-section">
+      <div>
+        <div id="ea-controls">
+          <button id="btn-start">Start Evolution</button>
+          <button id="btn-pause" disabled>Pause</button>
+          <button id="btn-reset" disabled>Reset</button>
+          <button id="btn-export" disabled>Export PNG</button>
+        </div>
+        <div class="stats">
+          <span>Gen: <span id="gen-counter" class="stat-value">0</span></span>
+          <span>Best: <span id="fitness-display" class="stat-value">0.000</span></span>
+          <span>Avg: <span id="avg-display" class="stat-value">0.000</span></span>
+          <span>Mutation: <span id="mutation-display" class="stat-value">0.30</span></span>
+        </div>
+
+        <div class="slider-group" style="margin-top: 12px;">
+          <h3>EA Parameters</h3>
+          <div class="slider-row">
+            <label>Pop. Size</label>
+            <input type="range" id="param-popSize" min="20" max="200" step="10" value="80">
+            <span class="slider-val" id="val-popSize">80</span>
+          </div>
+          <div class="slider-row">
+            <label>Mutation Rate</label>
+            <input type="range" id="param-mutRate" min="0.05" max="0.6" step="0.05" value="0.3">
+            <span class="slider-val" id="val-mutRate">0.30</span>
+          </div>
+          <div class="slider-row">
+            <label>Crossover Rate</label>
+            <input type="range" id="param-crossRate" min="0.1" max="1.0" step="0.05" value="0.7">
+            <span class="slider-val" id="val-crossRate">0.70</span>
+          </div>
+          <div class="slider-row">
+            <label>Tournament</label>
+            <input type="range" id="param-tournSize" min="2" max="10" step="1" value="4">
+            <span class="slider-val" id="val-tournSize">4</span>
+          </div>
+          <div class="slider-row">
+            <label>Elitism</label>
+            <input type="range" id="param-elitism" min="1" max="10" step="1" value="4">
+            <span class="slider-val" id="val-elitism">4</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="slider-group">
+        <h3>Fitness Weights</h3>
+        <div class="slider-row">
+          <label>Rule of Thirds</label>
+          <input type="range" id="weight-thirds" min="0" max="1" step="0.05" value="0.20">
+          <span class="slider-val" id="val-thirds">0.20</span>
+        </div>
+        <div class="slider-row">
+          <label>Visual Balance</label>
+          <input type="range" id="weight-balance" min="0" max="1" step="0.05" value="0.20">
+          <span class="slider-val" id="val-balance">0.20</span>
+        </div>
+        <div class="slider-row">
+          <label>Symmetry</label>
+          <input type="range" id="weight-symmetry" min="0" max="1" step="0.05" value="0.10">
+          <span class="slider-val" id="val-symmetry">0.10</span>
+        </div>
+        <div class="slider-row">
+          <label>Overlap</label>
+          <input type="range" id="weight-overlap" min="0" max="1" step="0.05" value="0.15">
+          <span class="slider-val" id="val-overlap">0.15</span>
+        </div>
+        <div class="slider-row">
+          <label>Colour Dist.</label>
+          <input type="range" id="weight-colour" min="0" max="1" step="0.05" value="0.15">
+          <span class="slider-val" id="val-colour">0.15</span>
+        </div>
+        <div class="slider-row">
+          <label>Size Variety</label>
+          <input type="range" id="weight-variety" min="0" max="1" step="0.05" value="0.10">
+          <span class="slider-val" id="val-variety">0.10</span>
+        </div>
+        <div class="slider-row">
+          <label>Edge Penalty</label>
+          <input type="range" id="weight-edge" min="0" max="1" step="0.05" value="0.10">
+          <span class="slider-val" id="val-edge">0.10</span>
+        </div>
+      </div>
+    </section>
+
+    <section id="fitness-chart">
+      <canvas id="chart-canvas" width="1200" height="400"></canvas>
+    </section>
+  </div>
+
+  <script type="module" src="main.js"></script>
+</body>
+</html>
