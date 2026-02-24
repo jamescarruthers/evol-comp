@@ -71,26 +71,31 @@
             <label>Pop. Size</label>
             <input type="range" id="param-popSize" min="20" max="200" step="10" value="80">
             <span class="slider-val" id="val-popSize">80</span>
+            <span class="slider-desc">Number of individuals in each generation</span>
           </div>
           <div class="slider-row">
             <label>Mutation Rate</label>
             <input type="range" id="param-mutRate" min="0.05" max="0.6" step="0.05" value="0.3">
             <span class="slider-val" id="val-mutRate">0.30</span>
+            <span class="slider-desc">Chance of random changes to offspring; adapts automatically when progress stalls</span>
           </div>
           <div class="slider-row">
             <label>Crossover Rate</label>
             <input type="range" id="param-crossRate" min="0.1" max="1.0" step="0.05" value="0.7">
             <span class="slider-val" id="val-crossRate">0.70</span>
+            <span class="slider-desc">Chance of combining two parents versus cloning the fitter one</span>
           </div>
           <div class="slider-row">
             <label>Tournament</label>
             <input type="range" id="param-tournSize" min="2" max="10" step="1" value="4">
             <span class="slider-val" id="val-tournSize">4</span>
+            <span class="slider-desc">Candidates compared per selection; higher values increase selection pressure</span>
           </div>
           <div class="slider-row">
             <label>Elitism</label>
             <input type="range" id="param-elitism" min="1" max="10" step="1" value="4">
             <span class="slider-val" id="val-elitism">4</span>
+            <span class="slider-desc">Top individuals preserved unchanged each generation</span>
           </div>
         </div>
       </div>
@@ -101,36 +106,43 @@
           <label>Rule of Thirds</label>
           <input type="range" id="weight-thirds" min="0" max="1" step="0.05" value="0.20">
           <span class="slider-val" id="val-thirds">0.20</span>
+          <span class="slider-desc">Rewards placing shapes near the four power points of the composition</span>
         </div>
         <div class="slider-row">
           <label>Visual Balance</label>
           <input type="range" id="weight-balance" min="0" max="1" step="0.05" value="0.20">
           <span class="slider-val" id="val-balance">0.20</span>
+          <span class="slider-desc">Measures how evenly visual weight is distributed around the centre</span>
         </div>
         <div class="slider-row">
           <label>Symmetry</label>
           <input type="range" id="weight-symmetry" min="0" max="1" step="0.05" value="0.10">
           <span class="slider-val" id="val-symmetry">0.10</span>
+          <span class="slider-desc">Favours partial bilateral symmetry; peaks at ~70% to avoid rigid mirroring</span>
         </div>
         <div class="slider-row">
           <label>Overlap</label>
           <input type="range" id="weight-overlap" min="0" max="1" step="0.05" value="0.15">
           <span class="slider-val" id="val-overlap">0.15</span>
+          <span class="slider-desc">Targets moderate layering between shapes; penalises heavy occlusion</span>
         </div>
         <div class="slider-row">
           <label>Colour Dist.</label>
           <input type="range" id="weight-colour" min="0" max="1" step="0.05" value="0.15">
           <span class="slider-val" id="val-colour">0.15</span>
+          <span class="slider-desc">Scores even colour usage and contrast between neighbouring shapes and background</span>
         </div>
         <div class="slider-row">
           <label>Size Variety</label>
           <input type="range" id="weight-variety" min="0" max="1" step="0.05" value="0.10">
           <span class="slider-val" id="val-variety">0.10</span>
+          <span class="slider-desc">Rewards a mix of large and small shapes with moderate canvas coverage</span>
         </div>
         <div class="slider-row">
           <label>Edge Penalty</label>
           <input type="range" id="weight-edge" min="0" max="1" step="0.05" value="0.10">
           <span class="slider-val" id="val-edge">0.10</span>
+          <span class="slider-desc">Penalises shapes that extend mostly off-canvas; allows up to 30% bleed</span>
         </div>
       </div>
     </section>
