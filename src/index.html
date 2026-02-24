@@ -24,6 +24,21 @@
       <div id="palette-swatches"></div>
     </section>
 
+    <section id="canvas-settings">
+      <div class="setting-row">
+        <label for="bg-colour">Background</label>
+        <input type="color" id="bg-colour" value="#f5f5f0">
+        <span class="setting-val" id="val-bg-colour">#f5f5f0</span>
+      </div>
+      <div class="setting-row">
+        <label for="grid-toggle">Grid Snap</label>
+        <input type="checkbox" id="grid-toggle">
+        <label for="grid-divisions" class="grid-div-label">Divisions</label>
+        <input type="range" id="grid-divisions" min="2" max="32" step="1" value="8" disabled>
+        <span class="setting-val" id="val-grid-divisions">8</span>
+      </div>
+    </section>
+
     <main>
       <div id="best-preview">
         <canvas id="best-canvas" width="400" height="400"></canvas>

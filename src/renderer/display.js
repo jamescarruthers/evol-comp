@@ -5,10 +5,10 @@ import { renderIndividual } from './canvas.js';
 /**
  * Render the best individual to the main preview canvas.
  */
-export function renderBest(individual, palette, canvas) {
+export function renderBest(individual, palette, canvas, bgColour = '#f5f5f0') {
   if (!individual) return;
   const ctx = canvas.getContext('2d');
-  renderIndividual(ctx, individual, palette, canvas.width, canvas.height);
+  renderIndividual(ctx, individual, palette, canvas.width, canvas.height, bgColour);
 }
 
 /**
@@ -17,8 +17,9 @@ export function renderBest(individual, palette, canvas) {
  * @param {Array} palette
  * @param {HTMLElement} gridContainer - container element for grid canvases
  * @param {number} thumbSize - size of each thumbnail in pixels
+ * @param {string} bgColour - background colour
  */
-export function renderGrid(individuals, palette, gridContainer, thumbSize = 80) {
+export function renderGrid(individuals, palette, gridContainer, thumbSize = 80, bgColour = '#f5f5f0') {
   // Ensure we have the right number of canvases
   const existing = gridContainer.querySelectorAll('canvas');
   while (existing.length > individuals.length) {
@@ -39,7 +40,7 @@ export function renderGrid(individuals, palette, gridContainer, thumbSize = 80) 
     }
 
     const ctx = canvas.getContext('2d');
-    renderIndividual(ctx, individuals[i], palette, thumbSize, thumbSize);
+    renderIndividual(ctx, individuals[i], palette, thumbSize, thumbSize, bgColour);
   }
 }
 
