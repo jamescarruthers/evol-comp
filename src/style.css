@@ -98,6 +98,64 @@ header h1 {
   transform: scale(1.1);
 }
 
+/* Canvas Settings (background colour, grid) */
+#canvas-settings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+  background: var(--surface);
+  border-radius: 4px;
+  padding: 10px 14px;
+  margin-bottom: 20px;
+}
+
+.setting-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+}
+
+.setting-row label {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.setting-row input[type="color"] {
+  width: 32px;
+  height: 26px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: none;
+  cursor: pointer;
+  padding: 1px;
+}
+
+.setting-row input[type="checkbox"] {
+  accent-color: var(--accent);
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.setting-row input[type="range"] {
+  width: 100px;
+  accent-color: var(--accent);
+  height: 4px;
+}
+
+.setting-row .setting-val {
+  font-family: monospace;
+  font-size: 0.75rem;
+  color: var(--accent);
+  min-width: 50px;
+}
+
+.setting-row .grid-div-label {
+  margin-left: 8px;
+}
+
 /* Main Layout */
 main {
   display: grid;

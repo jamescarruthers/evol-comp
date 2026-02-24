@@ -1,6 +1,6 @@
 // fitness/colour.js — Colour distribution & contrast scoring
 
-import { deltaE00 } from '../palette/harmony.js';
+import { deltaE00, rgbToLab } from '../palette/harmony.js';
 
 /**
  * Compute axis-aligned overlap area between two rectangles.
@@ -32,26 +32,58 @@ function adjacent(a, b, threshold) {
 }
 
 /**
- * Score colour distribution and contrast.
- * 1. Colour usage entropy (balance)
- * 2. Colour contrast between adjacent/overlapping rectangles
+ * Parse a CSS hex colour to [r, g, b] (0–255).
  */
-export function scoreColour(individual, palette) {
+function hexToRgb(hex) {
+  hex = hex.replace('#', '');
+  if (hex.length === 3) {
+    hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+  }
+  return [
+    parseInt(hex.substring(0, 2), 16),
+    parseInt(hex.substring(2, 4), 16),
+    parseInt(hex.substring(4, 6), 16)
+  ];
+}
+
+/**
+ * Score colour distribution and contrast, including background colour.
+ * 1. Colour usage entropy (balance) — includes background visible area
+ * 2. Colour contrast between adjacent/overlapping rectangles
+ * 3. Contrast between rectangles and background
+ * @param {Object} individual
+ * @param {Array} palette - colour palette
+ * @param {string} bgColour - CSS hex colour for the background
+ */
+export function scoreColour(individual, palette, bgColour = '#f5f5f0') {
   const rects = individual.rectangles;
   if (rects.length === 0 || palette.length === 0) return 0;
 
-  // 1. Colour usage entropy
+  const bgRgb = hexToRgb(bgColour);
+  const bgLab = rgbToLab(bgRgb[0], bgRgb[1], bgRgb[2]);
+
+  // 1. Colour usage entropy — include background as a colour channel
   const areaByColour = new Array(palette.length).fill(0);
-  let totalArea = 0;
+  let totalRectArea = 0;
 
   for (const rect of rects) {
     const area = rect.w * rect.h;
     areaByColour[rect.colourIndex] += area;
-    totalArea += area;
+    totalRectArea += area;
   }
 
+  // Estimate visible background area (1 - coverage, clamped)
+  const bgArea = Math.max(0, 1 - totalRectArea * 0.7); // approximate since overlaps reduce coverage
+
+  const totalArea = totalRectArea + bgArea;
   let entropy = 0;
   if (totalArea > 0) {
+    // Background entropy contribution
+    const pBg = bgArea / totalArea;
+    if (pBg > 0) {
+      entropy -= pBg * Math.log2(pBg);
+    }
+
     for (let i = 0; i < palette.length; i++) {
       const p = areaByColour[i] / totalArea;
       if (p > 0) {
@@ -60,7 +92,7 @@ export function scoreColour(individual, palette) {
     }
   }
 
-  const maxEntropy = Math.log2(palette.length);
+  const maxEntropy = Math.log2(palette.length + 1); // +1 for background
   const entropyScore = maxEntropy > 0 ? entropy / maxEntropy : 1;
 
   // 2. Colour contrast between neighbouring rectangles
@@ -78,6 +110,13 @@ export function scoreColour(individual, palette) {
         contrastCount++;
       }
     }
+  }
+
+  // 3. Background contrast — each rectangle vs background
+  for (const rect of rects) {
+    const dE = deltaE00(palette[rect.colourIndex].lab, bgLab);
+    contrastSum += Math.min(dE / 30, 1.0);
+    contrastCount++;
   }
 
   const contrastScore = contrastCount > 0 ? contrastSum / contrastCount : 0.5;

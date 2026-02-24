@@ -1,6 +1,6 @@
 // genome/operators.js — Crossover, mutation, selection operators
 
-import { RECT_COUNT_MIN, RECT_COUNT_MAX, cloneIndividual } from './representation.js';
+import { RECT_COUNT_MIN, RECT_COUNT_MAX, cloneIndividual, snapToGrid } from './representation.js';
 
 /**
  * Gaussian random with mean 0 and given standard deviation.
@@ -88,12 +88,24 @@ export function spatialCrossover(parentA, parentB, paletteLength) {
 
 /**
  * Perform crossover using a randomly chosen method.
+ * @param {number} gridDivisions - grid divisions for snapping (0 = disabled)
  */
-export function crossover(parentA, parentB, paletteLength) {
+export function crossover(parentA, parentB, paletteLength, gridDivisions = 0) {
+  let offspring;
   if (Math.random() < 0.5) {
-    return uniformCrossover(parentA, parentB, paletteLength);
+    offspring = uniformCrossover(parentA, parentB, paletteLength);
+  } else {
+    offspring = spatialCrossover(parentA, parentB, paletteLength);
   }
-  return spatialCrossover(parentA, parentB, paletteLength);
+
+  // Apply grid snapping to offspring rectangles
+  if (gridDivisions > 0) {
+    for (const rect of offspring.rectangles) {
+      snapToGrid(rect, gridDivisions);
+    }
+  }
+
+  return offspring;
 }
 
 /**
@@ -101,8 +113,9 @@ export function crossover(parentA, parentB, paletteLength) {
  * @param {Object} individual
  * @param {number} mutationRate - probability of mutating each rectangle
  * @param {number} paletteLength - number of colours in palette
+ * @param {number} gridDivisions - grid divisions for snapping (0 = disabled)
  */
-export function mutate(individual, mutationRate, paletteLength) {
+export function mutate(individual, mutationRate, paletteLength, gridDivisions = 0) {
   const rects = individual.rectangles;
 
   for (let i = 0; i < rects.length; i++) {
@@ -169,6 +182,13 @@ export function mutate(individual, mutationRate, paletteLength) {
           z: rects.length
         });
       }
+    }
+  }
+
+  // Apply grid snapping to all rectangles after mutation
+  if (gridDivisions > 0) {
+    for (const rect of rects) {
+      snapToGrid(rect, gridDivisions);
     }
   }
 

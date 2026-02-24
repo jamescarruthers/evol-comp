@@ -7,10 +7,11 @@
  * @param {Array} palette - array of {rgb: [r,g,b]}
  * @param {number} width - canvas width in pixels
  * @param {number} height - canvas height in pixels
+ * @param {string} bgColour - CSS colour string for the background
  */
-export function renderIndividual(ctx, individual, palette, width, height) {
+export function renderIndividual(ctx, individual, palette, width, height, bgColour = '#f5f5f0') {
   // Background
-  ctx.fillStyle = '#f5f5f0';
+  ctx.fillStyle = bgColour;
   ctx.fillRect(0, 0, width, height);
 
   // Sort by z-order (lower z draws first / further back)

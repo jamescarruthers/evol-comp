@@ -15,10 +15,12 @@ export const DEFAULT_PARAMS = {
 };
 
 export class EvolutionEngine {
-  constructor(palette, params = {}, weights = null) {
+  constructor(palette, params = {}, weights = null, gridDivisions = 0, bgColour = '#f5f5f0') {
     this.palette = palette;
     this.params = { ...DEFAULT_PARAMS, ...params };
     this.weights = weights ? { ...weights } : { ...DEFAULT_WEIGHTS };
+    this.gridDivisions = gridDivisions;
+    this.bgColour = bgColour;
     this.population = [];
     this.generation = 0;
     this.history = []; // { best, avg, worst } per generation
@@ -30,14 +32,14 @@ export class EvolutionEngine {
    * Initialise the population with random individuals.
    */
   init() {
-    this.population = createPopulation(this.params.populationSize, this.palette);
+    this.population = createPopulation(this.params.populationSize, this.palette, this.gridDivisions);
     this.generation = 0;
     this.history = [];
     this.currentMutationRate = this.params.mutationRate;
 
     // Evaluate initial population
     for (const ind of this.population) {
-      evaluate(ind, this.palette, this.weights);
+      evaluate(ind, this.palette, this.weights, this.bgColour);
     }
     this.population.sort((a, b) => b.fitness - a.fitness);
     this._recordHistory();
@@ -66,7 +68,7 @@ export class EvolutionEngine {
 
       let offspring;
       if (Math.random() < crossoverRate) {
-        offspring = crossover(parentA, parentB, this.palette.length);
+        offspring = crossover(parentA, parentB, this.palette.length, this.gridDivisions);
       } else {
         // Clone the better parent
         offspring = cloneIndividual(parentA.fitness >= parentB.fitness ? parentA : parentB);
@@ -74,8 +76,8 @@ export class EvolutionEngine {
         offspring.scores = null;
       }
 
-      mutate(offspring, this.currentMutationRate, this.palette.length);
-      evaluate(offspring, this.palette, this.weights);
+      mutate(offspring, this.currentMutationRate, this.palette.length, this.gridDivisions);
+      evaluate(offspring, this.palette, this.weights, this.bgColour);
       nextGen.push(offspring);
     }
 
@@ -106,8 +108,8 @@ export class EvolutionEngine {
       for (let i = 0; i < immigrationCount; i++) {
         const idx = this.population.length - 1 - i;
         if (idx >= this.params.elitismCount) {
-          this.population[idx] = createRandom(this.palette);
-          evaluate(this.population[idx], this.palette, this.weights);
+          this.population[idx] = createRandom(this.palette, this.gridDivisions);
+          evaluate(this.population[idx], this.palette, this.weights, this.bgColour);
         }
       }
     } else if (improvement > 0.01) {
@@ -154,7 +156,7 @@ export class EvolutionEngine {
     this.weights = { ...weights };
     // Re-evaluate entire population with new weights
     for (const ind of this.population) {
-      evaluate(ind, this.palette, this.weights);
+      evaluate(ind, this.palette, this.weights, this.bgColour);
     }
     this.population.sort((a, b) => b.fitness - a.fitness);
   }
@@ -166,8 +168,26 @@ export class EvolutionEngine {
     this.palette = palette;
     // Re-evaluate since colour-dependent fitness changes
     for (const ind of this.population) {
-      evaluate(ind, this.palette, this.weights);
+      evaluate(ind, this.palette, this.weights, this.bgColour);
     }
     this.population.sort((a, b) => b.fitness - a.fitness);
+  }
+
+  /**
+   * Update background colour and re-evaluate population.
+   */
+  setBgColour(bgColour) {
+    this.bgColour = bgColour;
+    for (const ind of this.population) {
+      evaluate(ind, this.palette, this.weights, this.bgColour);
+    }
+    this.population.sort((a, b) => b.fitness - a.fitness);
+  }
+
+  /**
+   * Update grid divisions setting.
+   */
+  setGridDivisions(gridDivisions) {
+    this.gridDivisions = gridDivisions;
   }
 }

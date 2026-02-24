@@ -15,6 +15,9 @@ let selectedStrategy = 'random';
 let selectedIndividual = null;
 let weights = { ...DEFAULT_WEIGHTS };
 let params = { ...DEFAULT_PARAMS };
+let bgColour = '#f5f5f0';
+let gridEnabled = false;
+let gridDivisions = 8;
 
 // ---- DOM References ----
 const bestCanvas = document.getElementById('best-canvas');
@@ -30,6 +33,16 @@ const btnPause = document.getElementById('btn-pause');
 const btnReset = document.getElementById('btn-reset');
 const btnExport = document.getElementById('btn-export');
 const paletteSwatches = document.getElementById('palette-swatches');
+const bgColourInput = document.getElementById('bg-colour');
+const bgColourVal = document.getElementById('val-bg-colour');
+const gridToggle = document.getElementById('grid-toggle');
+const gridDivisionsSlider = document.getElementById('grid-divisions');
+const gridDivisionsVal = document.getElementById('val-grid-divisions');
+
+/** Current effective grid divisions (0 if disabled). */
+function effectiveGrid() {
+  return gridEnabled ? gridDivisions : 0;
+}
 
 // ---- Palette ----
 function refreshPalette() {
@@ -37,8 +50,8 @@ function refreshPalette() {
   renderPaletteSwatches();
 
   // Show a random composition preview
-  const preview = createRandom(palette);
-  renderBest(preview, palette, bestCanvas);
+  const preview = createRandom(palette, effectiveGrid());
+  renderBest(preview, palette, bestCanvas, bgColour);
 
   // If engine is running, update its palette
   if (engine) {
@@ -72,10 +85,47 @@ document.querySelectorAll('.palette-buttons button').forEach(btn => {
   });
 });
 
+// ---- Background Colour ----
+bgColourInput.addEventListener('input', () => {
+  bgColour = bgColourInput.value;
+  bgColourVal.textContent = bgColour;
+  bestCanvas.style.background = bgColour;
+
+  if (engine) {
+    engine.setBgColour(bgColour);
+  }
+
+  // Re-render preview
+  const displayInd = selectedIndividual || (engine ? engine.getBest() : null);
+  if (displayInd) {
+    renderBest(displayInd, palette, bestCanvas, bgColour);
+    renderScoreBreakdown(bestScores, displayInd.scores, weights);
+  }
+});
+
+// ---- Grid Snapping ----
+gridToggle.addEventListener('change', () => {
+  gridEnabled = gridToggle.checked;
+  gridDivisionsSlider.disabled = !gridEnabled;
+
+  if (engine) {
+    engine.setGridDivisions(effectiveGrid());
+  }
+});
+
+gridDivisionsSlider.addEventListener('input', () => {
+  gridDivisions = parseInt(gridDivisionsSlider.value, 10);
+  gridDivisionsVal.textContent = gridDivisions.toString();
+
+  if (engine && gridEnabled) {
+    engine.setGridDivisions(gridDivisions);
+  }
+});
+
 // ---- Evolution Control ----
 function startEvolution() {
   if (!engine) {
-    engine = new EvolutionEngine(palette, params, weights);
+    engine = new EvolutionEngine(palette, params, weights, effectiveGrid(), bgColour);
     engine.init();
   }
   running = true;
@@ -111,8 +161,8 @@ function resetEvolution() {
   btnExport.disabled = true;
 
   // Show random preview
-  const preview = createRandom(palette);
-  renderBest(preview, palette, bestCanvas);
+  const preview = createRandom(palette, effectiveGrid());
+  renderBest(preview, palette, bestCanvas, bgColour);
 
   // Clear chart
   const ctx = chartCanvas.getContext('2d');
@@ -131,7 +181,7 @@ function exportPNG() {
   exportCanvas.width = 1600;
   exportCanvas.height = 1600;
   const ctx = exportCanvas.getContext('2d');
-  renderIndividual(ctx, best, palette, 1600, 1600);
+  renderIndividual(ctx, best, palette, 1600, 1600, bgColour);
 
   const link = document.createElement('a');
   link.download = `composition-gen${engine.generation}.png`;
@@ -161,12 +211,12 @@ function tick() {
 
   // Render best (or selected) individual
   const displayInd = selectedIndividual || best;
-  renderBest(displayInd, palette, bestCanvas);
+  renderBest(displayInd, palette, bestCanvas, bgColour);
   renderScoreBreakdown(bestScores, displayInd?.scores, weights);
 
   // Render population grid every few generations
   if (engine.generation % 3 === 0) {
-    renderGrid(engine.getTopN(20), palette, populationGrid, 80);
+    renderGrid(engine.getTopN(20), palette, populationGrid, 80, bgColour);
 
     // Re-attach click handlers
     populationGrid.querySelectorAll('canvas').forEach((thumb, idx) => {
@@ -176,7 +226,7 @@ function tick() {
         const topN = engine.getTopN(20);
         if (topN[idx]) {
           selectedIndividual = topN[idx];
-          renderBest(selectedIndividual, palette, bestCanvas);
+          renderBest(selectedIndividual, palette, bestCanvas, bgColour);
           renderScoreBreakdown(bestScores, selectedIndividual.scores, weights);
         }
       };
@@ -270,6 +320,7 @@ document.addEventListener('keydown', (e) => {
 });
 
 // ---- Initial Setup ----
+bestCanvas.style.background = bgColour;
 refreshPalette();
 
 // Set initial chart background

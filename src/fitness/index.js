@@ -23,15 +23,16 @@ export const DEFAULT_WEIGHTS = {
  * @param {Object} individual
  * @param {Array} palette - colour palette
  * @param {Object} weights - weight per fitness component
+ * @param {string} bgColour - background colour (CSS hex)
  * @returns {number} fitness score 0–1
  */
-export function evaluate(individual, palette, weights = DEFAULT_WEIGHTS) {
+export function evaluate(individual, palette, weights = DEFAULT_WEIGHTS, bgColour = '#f5f5f0') {
   const scores = {
     thirds: scoreThirds(individual),
     balance: scoreBalance(individual, palette),
     symmetry: scoreSymmetry(individual),
     overlap: scoreOverlap(individual),
-    colour: scoreColour(individual, palette),
+    colour: scoreColour(individual, palette, bgColour),
     variety: scoreVariety(individual),
     edge: scoreEdgePenalty(individual)
   };
