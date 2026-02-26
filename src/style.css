@@ -156,6 +156,12 @@ header h1 {
   margin-left: 8px;
 }
 
+.setting-row .setting-hint {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  min-width: auto;
+}
+
 /* Main Layout */
 main {
   display: grid;

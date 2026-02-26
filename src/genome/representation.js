@@ -1,5 +1,7 @@
 // genome/representation.js — Genome encoding/decoding
 
+import { createRandomTetris, cloneTetrisIndividual } from './tetris.js';
+
 export const RECT_COUNT_MIN = 5;
 export const RECT_COUNT_MAX = 20;
 
@@ -52,12 +54,18 @@ export function snapToGrid(rect, gridDivisions) {
 }
 
 /**
- * Create a random individual (composition of rectangles).
+ * Create a random individual (composition of rectangles, or tetris tiling).
  * @param {Array} palette - array of colour objects
  * @param {number} gridDivisions - grid divisions (0 = no grid)
+ * @param {boolean} tetrisMode - if true, create a tetris-tiled individual
  * @returns {Object} individual with rectangles array and null fitness
  */
-export function createRandom(palette, gridDivisions = 0) {
+export function createRandom(palette, gridDivisions = 0, tetrisMode = false) {
+  if (tetrisMode) {
+    const gs = gridDivisions > 0 ? gridDivisions : 8;
+    return createRandomTetris(palette, gs);
+  }
+
   const count = RECT_COUNT_MIN + Math.floor(Math.random() * (RECT_COUNT_MAX - RECT_COUNT_MIN + 1));
   const rectangles = [];
   for (let i = 0; i < count; i++) {
@@ -76,9 +84,12 @@ export function createRandom(palette, gridDivisions = 0) {
 }
 
 /**
- * Deep-clone an individual.
+ * Deep-clone an individual (rectangle or tetris mode).
  */
 export function cloneIndividual(individual) {
+  if (individual.mode === 'tetris') {
+    return cloneTetrisIndividual(individual);
+  }
   return {
     rectangles: individual.rectangles.map(r => ({ ...r })),
     fitness: individual.fitness,
@@ -91,12 +102,13 @@ export function cloneIndividual(individual) {
  * @param {number} size - population size
  * @param {Array} palette - colour palette
  * @param {number} gridDivisions - grid divisions (0 = no grid)
+ * @param {boolean} tetrisMode - if true, create tetris-tiled individuals
  * @returns {Array} population array
  */
-export function createPopulation(size, palette, gridDivisions = 0) {
+export function createPopulation(size, palette, gridDivisions = 0, tetrisMode = false) {
   const population = [];
   for (let i = 0; i < size; i++) {
-    population.push(createRandom(palette, gridDivisions));
+    population.push(createRandom(palette, gridDivisions, tetrisMode));
   }
   return population;
 }
