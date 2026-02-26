@@ -1,7 +1,7 @@
 // ea/engine.js — Evolutionary algorithm loop
 
 import { createPopulation, cloneIndividual, createRandom } from '../genome/representation.js';
-import { tournamentSelect, crossover, mutate } from '../genome/operators.js';
+import { tournamentSelect, crossover, mutate, DEFAULT_MUTATION_TOGGLES } from '../genome/operators.js';
 import { evaluate, DEFAULT_WEIGHTS } from '../fitness/index.js';
 
 /** Stagnation tier thresholds (consecutive stagnant generations). */
@@ -23,7 +23,7 @@ export const DEFAULT_PARAMS = {
 };
 
 export class EvolutionEngine {
-  constructor(palette, params = {}, weights = null, gridDivisions = 0, bgColour = '#f5f5f0', tetrisMode = false, tetrisDivisions = 1, aspectRatio = 1) {
+  constructor(palette, params = {}, weights = null, gridDivisions = 0, bgColour = '#f5f5f0', tetrisMode = false, tetrisDivisions = 1, aspectRatio = 1, mutationToggles = null) {
     this.palette = palette;
     this.params = { ...DEFAULT_PARAMS, ...params };
     this.weights = weights ? { ...weights } : { ...DEFAULT_WEIGHTS };
@@ -32,6 +32,7 @@ export class EvolutionEngine {
     this.tetrisMode = tetrisMode;
     this.tetrisDivisions = tetrisDivisions;
     this.aspectRatio = aspectRatio;
+    this.mutationToggles = mutationToggles ? { ...mutationToggles } : { ...DEFAULT_MUTATION_TOGGLES };
     this.population = [];
     this.generation = 0;
     this.history = []; // { best, avg, worst } per generation
@@ -91,7 +92,7 @@ export class EvolutionEngine {
         offspring.scores = null;
       }
 
-      mutate(offspring, this.currentMutationRate, this.palette.length, this.gridDivisions, this.aspectRatio);
+      mutate(offspring, this.currentMutationRate, this.palette.length, this.gridDivisions, this.aspectRatio, this.mutationToggles);
       evaluate(offspring, this.palette, this.weights, this.bgColour, this.aspectRatio);
       nextGen.push(offspring);
     }
@@ -194,7 +195,7 @@ export class EvolutionEngine {
     const midStart = this.params.elitismCount;
     const midEnd = this.population.length - immigrationCount;
     for (let i = midStart; i < midEnd; i++) {
-      mutate(this.population[i], 0.9, this.palette.length, this.gridDivisions, this.aspectRatio);
+      mutate(this.population[i], 0.9, this.palette.length, this.gridDivisions, this.aspectRatio, this.mutationToggles);
       evaluate(this.population[i], this.palette, this.weights, this.bgColour, this.aspectRatio);
     }
   }
@@ -298,5 +299,12 @@ export class EvolutionEngine {
    */
   setTetrisDivisions(tetrisDivisions) {
     this.tetrisDivisions = tetrisDivisions;
+  }
+
+  /**
+   * Update mutation toggles (which mutation types are allowed).
+   */
+  setMutationToggles(toggles) {
+    this.mutationToggles = { ...toggles };
   }
 }
