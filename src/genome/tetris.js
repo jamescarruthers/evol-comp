@@ -281,8 +281,10 @@ export function cloneTetrisIndividual(ind) {
 
 /**
  * Mutate a tetris individual in-place.
+ * @param {Object} mutationToggles - { colour, size, position } booleans
  */
-export function mutateTetris(individual, mutationRate, paletteLength) {
+export function mutateTetris(individual, mutationRate, paletteLength, mutationToggles) {
+  const mt = mutationToggles || { colour: true, size: true, position: true };
   const { pieces } = individual;
 
   for (let attempt = 0; attempt < pieces.length; attempt++) {
@@ -291,9 +293,13 @@ export function mutateTetris(individual, mutationRate, paletteLength) {
     const roll = Math.random();
 
     if (roll < 0.50) {
+      // Recolour piece
+      if (!mt.colour) continue;
       const idx = Math.floor(Math.random() * pieces.length);
       pieces[idx].colourIndex = Math.floor(Math.random() * paletteLength);
     } else if (roll < 0.80) {
+      // Swap piece colours
+      if (!mt.colour) continue;
       if (pieces.length >= 2) {
         const a = Math.floor(Math.random() * pieces.length);
         let b = Math.floor(Math.random() * pieces.length);
@@ -303,6 +309,8 @@ export function mutateTetris(individual, mutationRate, paletteLength) {
         pieces[b].colourIndex = tmp;
       }
     } else {
+      // Retile region
+      if (!mt.position) continue;
       retileRegion(individual, paletteLength);
     }
   }

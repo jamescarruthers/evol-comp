@@ -117,6 +117,9 @@ export function crossover(parentA, parentB, paletteLength, gridDivisions = 0, as
   return offspring;
 }
 
+/** Default mutation toggles — all enabled. */
+export const DEFAULT_MUTATION_TOGGLES = { colour: true, size: true, position: true };
+
 /**
  * Mutate an individual in-place.
  * Dispatches to tetris mutation if individual is tetris-mode.
@@ -125,10 +128,13 @@ export function crossover(parentA, parentB, paletteLength, gridDivisions = 0, as
  * @param {number} paletteLength - number of colours in palette
  * @param {number} gridDivisions - grid divisions for snapping (0 = disabled)
  * @param {number} aspectRatio - canvas width/height ratio
+ * @param {Object} mutationToggles - { colour, size, position } booleans
  */
-export function mutate(individual, mutationRate, paletteLength, gridDivisions = 0, aspectRatio = 1) {
+export function mutate(individual, mutationRate, paletteLength, gridDivisions = 0, aspectRatio = 1, mutationToggles = DEFAULT_MUTATION_TOGGLES) {
+  const mt = mutationToggles || DEFAULT_MUTATION_TOGGLES;
+
   if (individual.mode === 'tetris') {
-    mutateTetris(individual, mutationRate, paletteLength);
+    mutateTetris(individual, mutationRate, paletteLength, mt);
     return;
   }
 
@@ -140,8 +146,8 @@ export function mutate(individual, mutationRate, paletteLength, gridDivisions = 
     const mutationType = Math.random();
 
     if (mutationType < 0.25) {
-      // Nudge position — 30 % of nudges drift toward the nearest
-      // rule-of-thirds power point for gentle compositional pressure
+      // Nudge position
+      if (!mt.position) continue;
       if (Math.random() < 0.3) {
         const ar = aspectRatio;
         const powerPoints = [[ar/3,1/3],[2*ar/3,1/3],[ar/3,2/3],[2*ar/3,2/3]];
@@ -161,12 +167,14 @@ export function mutate(individual, mutationRate, paletteLength, gridDivisions = 
       rects[i].y = Math.max(-0.2, Math.min(1.2, rects[i].y));
     } else if (mutationType < 0.45) {
       // Resize
+      if (!mt.size) continue;
       rects[i].w *= 0.7 + Math.random() * 0.7; // 0.7–1.4
       rects[i].h *= 0.7 + Math.random() * 0.7;
       rects[i].w = Math.max(0.02, Math.min(0.7, rects[i].w));
       rects[i].h = Math.max(0.02, Math.min(0.7, rects[i].h));
     } else if (mutationType < 0.60) {
       // Recolour — either swap with another shape or pick a new colour
+      if (!mt.colour) continue;
       if (rects.length > 1 && Math.random() < 0.35) {
         // Swap colours with another rectangle
         let j = Math.floor(Math.random() * rects.length);
@@ -195,6 +203,7 @@ export function mutate(individual, mutationRate, paletteLength, gridDivisions = 
       }
     } else if (mutationType < 0.80) {
       // Aspect ratio shift (swap w and h)
+      if (!mt.size) continue;
       const tmp = rects[i].w;
       rects[i].w = rects[i].h;
       rects[i].h = tmp;
@@ -218,6 +227,7 @@ export function mutate(individual, mutationRate, paletteLength, gridDivisions = 
       }
     } else {
       // Duplicate: mirror or jitter
+      if (!mt.position) continue;
       if (rects.length < RECT_COUNT_MAX) {
         if (Math.random() < 0.5) {
           // Mirror duplicate — reflect across the vertical axis to aid symmetry

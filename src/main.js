@@ -34,6 +34,7 @@ let gridDivisions = 8;
 let tetrisMode = false;
 let tetrisDivisions = 1;
 let currentAspect = '1:1';
+let mutationToggles = { colour: true, size: true, position: true };
 
 // ---- DOM References ----
 const bestCanvas = document.getElementById('best-canvas');
@@ -60,6 +61,9 @@ const tetrisDivisionsSlider = document.getElementById('tetris-divisions');
 const tetrisDivisionsVal = document.getElementById('val-tetris-divisions');
 const tetrisDivisionsRow = document.getElementById('tetris-divisions-row');
 const aspectRatioSelect = document.getElementById('aspect-ratio');
+const toggleMutateColour = document.getElementById('toggle-mutate-colour');
+const toggleMutateSize = document.getElementById('toggle-mutate-size');
+const toggleMutatePosition = document.getElementById('toggle-mutate-position');
 
 const STAGNATION_LABELS = ['', 'Stagnant', 'Shaking up', 'Cataclysm!'];
 const STAGNATION_CLASSES = ['stagnation-none', 'stagnation-mild', 'stagnation-moderate', 'stagnation-severe'];
@@ -194,6 +198,20 @@ tetrisDivisionsSlider.addEventListener('input', () => {
   }
 });
 
+// ---- Mutation Toggles ----
+function onMutationToggleChange() {
+  mutationToggles.colour = toggleMutateColour.checked;
+  mutationToggles.size = toggleMutateSize.checked;
+  mutationToggles.position = toggleMutatePosition.checked;
+  if (engine) {
+    engine.setMutationToggles(mutationToggles);
+  }
+}
+
+toggleMutateColour.addEventListener('change', onMutationToggleChange);
+toggleMutateSize.addEventListener('change', onMutationToggleChange);
+toggleMutatePosition.addEventListener('change', onMutationToggleChange);
+
 // ---- Canvas Aspect Ratio ----
 function applyAspectRatio(key) {
   const preset = ASPECT_PRESETS[key];
@@ -227,7 +245,7 @@ aspectRatioSelect.addEventListener('change', () => {
 // ---- Evolution Control ----
 function startEvolution() {
   if (!engine) {
-    engine = new EvolutionEngine(palette, params, weights, effectiveGrid(), bgColour, tetrisMode, tetrisDivisions, effectiveAspect());
+    engine = new EvolutionEngine(palette, params, weights, effectiveGrid(), bgColour, tetrisMode, tetrisDivisions, effectiveAspect(), mutationToggles);
     engine.init();
   }
   running = true;
