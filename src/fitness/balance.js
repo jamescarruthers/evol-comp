@@ -14,10 +14,12 @@ export function scoreBalance(individual, palette, aspectRatio = 1) {
   let comY = 0;
 
   for (const rect of rects) {
+    const vis = rect.visibility ?? 1;
+    if (vis <= 0) continue;
     const area = rect.w * rect.h;
     const colour = palette[rect.colourIndex];
-    // Weight: area * (saturation * 0.7 + (1 - lightness) * 0.3)
-    const weight = area * (colour.s * 0.7 + (1 - colour.l) * 0.3);
+    // Weight: visible area * (saturation * 0.7 + (1 - lightness) * 0.3)
+    const weight = area * vis * (colour.s * 0.7 + (1 - colour.l) * 0.3);
     comX += weight * rect.x;
     comY += weight * rect.y;
     totalWeight += weight;

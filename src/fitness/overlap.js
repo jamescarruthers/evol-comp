@@ -33,21 +33,12 @@ export function scoreOverlap(individual) {
     const area = rects[i].w * rects[i].h;
     totalArea += area;
 
-    let occludedArea = 0;
-    for (let j = 0; j < rects.length; j++) {
-      if (i === j) continue;
-      const oa = overlapArea(rects[i], rects[j]);
-      if (i < j) totalOverlap += oa;
-      // Only count occlusion from higher z-order rectangles
-      if (rects[j].z > rects[i].z) {
-        occludedArea += oa;
-      }
+    for (let j = i + 1; j < rects.length; j++) {
+      totalOverlap += overlapArea(rects[i], rects[j]);
     }
 
-    if (area > 0) {
-      const occlusionRatio = occludedArea / area;
-      if (occlusionRatio > maxOcclusion) maxOcclusion = occlusionRatio;
-    }
+    const vis = rects[i].visibility ?? 1;
+    if (vis < 0.2) maxOcclusion = Math.max(maxOcclusion, 1 - vis);
   }
 
   if (totalArea === 0) return 0;
@@ -57,7 +48,7 @@ export function scoreOverlap(individual) {
   // Score via Gaussian around ideal overlap
   let score = gaussianScore(overlapRatio, 0.2, 0.1);
 
-  // Penalty if any rectangle is >80% occluded
+  // Graduated penalty for heavily occluded shapes (uses precomputed visibility)
   if (maxOcclusion > 0.8) {
     score *= 0.7;
   }

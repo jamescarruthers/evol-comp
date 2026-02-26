@@ -10,7 +10,11 @@ export function scoreVariety(individual, aspectRatio = 1) {
   const rects = individual.rectangles;
   if (rects.length === 0) return 0;
 
-  const areas = rects.map(r => r.w * r.h);
+  // Use visibility-weighted areas so hidden shapes don't inflate metrics
+  const visibleRects = rects.filter(r => (r.visibility ?? 1) > 0);
+  if (visibleRects.length === 0) return 0;
+
+  const areas = visibleRects.map(r => r.w * r.h * (r.visibility ?? 1));
   const n = areas.length;
 
   // 1. Size variety via coefficient of variation
@@ -24,8 +28,7 @@ export function scoreVariety(individual, aspectRatio = 1) {
   // CV peaks at ~0.8
   const varietyScore = gaussianScore(cv, 0.8, 0.3);
 
-  // 2. Coverage: approximate union area / canvas area
-  // Use a simple approximation — sum of areas minus estimated overlaps
+  // 2. Coverage: approximate visible area / canvas area
   const totalArea = areas.reduce((a, b) => a + b, 0);
   // Canvas area in isotropic coords is aspectRatio × 1
   const canvasArea = aspectRatio;

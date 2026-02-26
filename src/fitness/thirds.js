@@ -30,10 +30,12 @@ export function scoreThirds(individual, aspectRatio = 1) {
   for (const [px, py] of powerPoints) {
     let bestProximity = 0;
     for (const rect of rects) {
+      const vis = rect.visibility ?? 1;
+      if (vis <= 0) continue;
       const dx = rect.x - px;
       const dy = rect.y - py;
       const distSq = dx * dx + dy * dy;
-      const proximity = Math.exp(-distSq / sigmaSquared2);
+      const proximity = Math.exp(-distSq / sigmaSquared2) * vis;
       if (proximity > bestProximity) bestProximity = proximity;
     }
     score += bestProximity;
