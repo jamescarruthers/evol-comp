@@ -213,16 +213,29 @@ export function mutate(individual, mutationRate, paletteLength, gridDivisions = 
         i--; // adjust index after removal
       }
     } else {
-      // Duplicate + jitter
+      // Duplicate: mirror or jitter
       if (rects.length < RECT_COUNT_MAX) {
-        rects.push({
-          x: rects[i].x + gaussRandom(0.05),
-          y: rects[i].y + gaussRandom(0.05),
-          w: rects[i].w * (0.8 + Math.random() * 0.4),
-          h: rects[i].h * (0.8 + Math.random() * 0.4),
-          colourIndex: rects[i].colourIndex,
-          z: rects.length
-        });
+        if (Math.random() < 0.5) {
+          // Mirror duplicate — reflect across the vertical axis to aid symmetry
+          rects.push({
+            x: 1 - rects[i].x,
+            y: rects[i].y + gaussRandom(0.02),
+            w: rects[i].w,
+            h: rects[i].h,
+            colourIndex: rects[i].colourIndex,
+            z: rects.length
+          });
+        } else {
+          // Jitter duplicate — clone with small perturbation
+          rects.push({
+            x: rects[i].x + gaussRandom(0.05),
+            y: rects[i].y + gaussRandom(0.05),
+            w: rects[i].w * (0.8 + Math.random() * 0.4),
+            h: rects[i].h * (0.8 + Math.random() * 0.4),
+            colourIndex: rects[i].colourIndex,
+            z: rects.length
+          });
+        }
       }
     }
   }
