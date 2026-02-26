@@ -137,9 +137,22 @@ export function mutate(individual, mutationRate, paletteLength, gridDivisions = 
     const mutationType = Math.random();
 
     if (mutationType < 0.25) {
-      // Nudge position
-      rects[i].x += gaussRandom(0.05);
-      rects[i].y += gaussRandom(0.05);
+      // Nudge position — 30 % of nudges drift toward the nearest
+      // rule-of-thirds power point for gentle compositional pressure
+      if (Math.random() < 0.3) {
+        const powerPoints = [[1/3,1/3],[2/3,1/3],[1/3,2/3],[2/3,2/3]];
+        let nearestDist = Infinity, nearest;
+        for (const pp of powerPoints) {
+          const d = (rects[i].x - pp[0]) ** 2 + (rects[i].y - pp[1]) ** 2;
+          if (d < nearestDist) { nearestDist = d; nearest = pp; }
+        }
+        const factor = 0.1 + Math.random() * 0.2; // move 10-30 % of the way
+        rects[i].x += (nearest[0] - rects[i].x) * factor;
+        rects[i].y += (nearest[1] - rects[i].y) * factor;
+      } else {
+        rects[i].x += gaussRandom(0.05);
+        rects[i].y += gaussRandom(0.05);
+      }
       rects[i].x = Math.max(-0.2, Math.min(1.2, rects[i].x));
       rects[i].y = Math.max(-0.2, Math.min(1.2, rects[i].y));
     } else if (mutationType < 0.45) {
@@ -149,8 +162,24 @@ export function mutate(individual, mutationRate, paletteLength, gridDivisions = 
       rects[i].w = Math.max(0.02, Math.min(0.7, rects[i].w));
       rects[i].h = Math.max(0.02, Math.min(0.7, rects[i].h));
     } else if (mutationType < 0.60) {
-      // Recolour
-      rects[i].colourIndex = Math.floor(Math.random() * paletteLength);
+      // Recolour — either swap with another shape or pick a new colour
+      if (rects.length > 1 && Math.random() < 0.35) {
+        // Swap colours with another rectangle
+        let j = Math.floor(Math.random() * rects.length);
+        while (j === i) j = Math.floor(Math.random() * rects.length);
+        const tmpC = rects[i].colourIndex;
+        rects[i].colourIndex = rects[j].colourIndex;
+        rects[j].colourIndex = tmpC;
+      } else {
+        // Pick a different colour from the palette
+        let newColour = Math.floor(Math.random() * paletteLength);
+        if (paletteLength > 1) {
+          while (newColour === rects[i].colourIndex) {
+            newColour = Math.floor(Math.random() * paletteLength);
+          }
+        }
+        rects[i].colourIndex = newColour;
+      }
     } else if (mutationType < 0.72) {
       // Swap z-order with another rectangle
       if (rects.length > 1) {
@@ -184,16 +213,29 @@ export function mutate(individual, mutationRate, paletteLength, gridDivisions = 
         i--; // adjust index after removal
       }
     } else {
-      // Duplicate + jitter
+      // Duplicate: mirror or jitter
       if (rects.length < RECT_COUNT_MAX) {
-        rects.push({
-          x: rects[i].x + gaussRandom(0.05),
-          y: rects[i].y + gaussRandom(0.05),
-          w: rects[i].w * (0.8 + Math.random() * 0.4),
-          h: rects[i].h * (0.8 + Math.random() * 0.4),
-          colourIndex: rects[i].colourIndex,
-          z: rects.length
-        });
+        if (Math.random() < 0.5) {
+          // Mirror duplicate — reflect across the vertical axis to aid symmetry
+          rects.push({
+            x: 1 - rects[i].x,
+            y: rects[i].y + gaussRandom(0.02),
+            w: rects[i].w,
+            h: rects[i].h,
+            colourIndex: rects[i].colourIndex,
+            z: rects.length
+          });
+        } else {
+          // Jitter duplicate — clone with small perturbation
+          rects.push({
+            x: rects[i].x + gaussRandom(0.05),
+            y: rects[i].y + gaussRandom(0.05),
+            w: rects[i].w * (0.8 + Math.random() * 0.4),
+            h: rects[i].h * (0.8 + Math.random() * 0.4),
+            colourIndex: rects[i].colourIndex,
+            z: rects.length
+          });
+        }
       }
     }
   }
