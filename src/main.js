@@ -44,6 +44,7 @@ const genCounter = document.getElementById('gen-counter');
 const fitnessDisplay = document.getElementById('fitness-display');
 const avgDisplay = document.getElementById('avg-display');
 const mutationDisplay = document.getElementById('mutation-display');
+const stagnationIndicator = document.getElementById('stagnation-indicator');
 const btnStart = document.getElementById('btn-start');
 const btnPause = document.getElementById('btn-pause');
 const btnReset = document.getElementById('btn-reset');
@@ -59,6 +60,9 @@ const tetrisDivisionsSlider = document.getElementById('tetris-divisions');
 const tetrisDivisionsVal = document.getElementById('val-tetris-divisions');
 const tetrisDivisionsRow = document.getElementById('tetris-divisions-row');
 const aspectRatioSelect = document.getElementById('aspect-ratio');
+
+const STAGNATION_LABELS = ['', 'Stagnant', 'Shaking up', 'Cataclysm!'];
+const STAGNATION_CLASSES = ['stagnation-none', 'stagnation-mild', 'stagnation-moderate', 'stagnation-severe'];
 
 /** Current effective grid divisions (0 if disabled). */
 function effectiveGrid() {
@@ -250,6 +254,8 @@ function resetEvolution() {
   fitnessDisplay.textContent = '0.000';
   avgDisplay.textContent = '0.000';
   mutationDisplay.textContent = params.mutationRate.toFixed(2);
+  stagnationIndicator.textContent = '';
+  stagnationIndicator.className = 'stagnation-none';
   populationGrid.innerHTML = '';
   bestScores.innerHTML = '<p class="muted">Click "Start Evolution" to begin</p>';
   btnStart.textContent = 'Start Evolution';
@@ -347,6 +353,11 @@ function tick() {
   fitnessDisplay.textContent = engine.getBestFitness().toFixed(3);
   avgDisplay.textContent = engine.getAvgFitness().toFixed(3);
   mutationDisplay.textContent = engine.currentMutationRate.toFixed(2);
+
+  // Stagnation indicator
+  const tier = engine.stagnationTier || 0;
+  stagnationIndicator.textContent = STAGNATION_LABELS[tier];
+  stagnationIndicator.className = STAGNATION_CLASSES[tier];
 
   requestAnimationFrame(tick);
 }
