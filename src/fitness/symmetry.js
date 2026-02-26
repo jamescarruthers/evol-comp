@@ -12,11 +12,15 @@ export function scoreSymmetry(individual, aspectRatio = 1) {
 
   const midX = aspectRatio / 2;
 
+  // Only consider shapes that are at least partially visible
+  const visibleRects = rects.filter(r => (r.visibility ?? 1) > 0);
+  if (visibleRects.length < 2) return 0.5;
+
   // Split into left-side and right-side rectangles
   const leftRects = [];
   const rightRects = [];
 
-  for (const rect of rects) {
+  for (const rect of visibleRects) {
     if (rect.x < midX) {
       leftRects.push(rect);
     } else {
@@ -43,9 +47,10 @@ export function scoreSymmetry(individual, aspectRatio = 1) {
       if (dist < bestDist) bestDist = dist;
     }
 
-    // Convert distance to similarity (0–1)
+    // Convert distance to similarity (0–1), weighted by visibility
     const similarity = Math.exp(-bestDist * bestDist / (2 * 0.2 * 0.2));
-    matchScore += similarity;
+    const vis = lr.visibility ?? 1;
+    matchScore += similarity * vis;
     matchCount++;
   }
 

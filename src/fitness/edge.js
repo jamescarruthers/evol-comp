@@ -11,6 +11,8 @@ export function scoreEdgePenalty(individual, aspectRatio = 1) {
   let penalty = 0;
 
   for (const rect of rects) {
+    if ((rect.visibility ?? 1) <= 0) continue;
+
     const left = rect.x - rect.w / 2;
     const right = rect.x + rect.w / 2;
     const top = rect.y - rect.h / 2;

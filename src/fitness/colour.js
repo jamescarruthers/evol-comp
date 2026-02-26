@@ -63,11 +63,13 @@ export function scoreColour(individual, palette, bgColour = '#f5f5f0', aspectRat
   const bgLab = rgbToLab(bgRgb[0], bgRgb[1], bgRgb[2]);
 
   // 1. Colour usage entropy — include background as a colour channel
+  //    Weight areas by visibility so hidden shapes don't skew distribution
   const areaByColour = new Array(palette.length).fill(0);
   let totalRectArea = 0;
 
   for (const rect of rects) {
-    const area = rect.w * rect.h;
+    const vis = rect.visibility ?? 1;
+    const area = rect.w * rect.h * vis;
     areaByColour[rect.colourIndex] += area;
     totalRectArea += area;
   }
@@ -96,27 +98,33 @@ export function scoreColour(individual, palette, bgColour = '#f5f5f0', aspectRat
   const maxEntropy = Math.log2(palette.length + 1); // +1 for background
   const entropyScore = maxEntropy > 0 ? entropy / maxEntropy : 1;
 
-  // 2. Colour contrast between neighbouring rectangles
+  // 2. Colour contrast between neighbouring rectangles (skip hidden shapes)
   let contrastSum = 0;
   let contrastCount = 0;
 
   for (let i = 0; i < rects.length; i++) {
+    if ((rects[i].visibility ?? 1) <= 0) continue;
     for (let j = i + 1; j < rects.length; j++) {
+      if ((rects[j].visibility ?? 1) <= 0) continue;
       if (overlaps(rects[i], rects[j]) || adjacent(rects[i], rects[j], 0.05)) {
         const dE = deltaE00(
           palette[rects[i].colourIndex].lab,
           palette[rects[j].colourIndex].lab
         );
-        contrastSum += Math.min(dE / 30, 1.0);
+        // Weight by the minimum visibility of the pair
+        const pairVis = Math.min(rects[i].visibility ?? 1, rects[j].visibility ?? 1);
+        contrastSum += Math.min(dE / 30, 1.0) * pairVis;
         contrastCount++;
       }
     }
   }
 
-  // 3. Background contrast — each rectangle vs background
+  // 3. Background contrast — each visible rectangle vs background
   for (const rect of rects) {
+    const vis = rect.visibility ?? 1;
+    if (vis <= 0) continue;
     const dE = deltaE00(palette[rect.colourIndex].lab, bgLab);
-    contrastSum += Math.min(dE / 30, 1.0);
+    contrastSum += Math.min(dE / 30, 1.0) * vis;
     contrastCount++;
   }
 

@@ -9,6 +9,7 @@ import { scoreVariety } from './variety.js';
 import { scoreEdgePenalty } from './edge.js';
 import { scoreDetail } from './detail.js';
 import { tetrisToRects } from '../genome/tetris.js';
+import { computeVisibility } from './visibility.js';
 
 export const DEFAULT_WEIGHTS = {
   thirds: 0.20,
@@ -37,6 +38,10 @@ export function evaluate(individual, palette, weights = DEFAULT_WEIGHTS, bgColou
   if (individual.mode === 'tetris') {
     proxy = { rectangles: tetrisToRects(individual) };
   }
+
+  // Annotate each rectangle with its visible fraction (0–1) so that
+  // scoring functions can down-weight or skip occluded shapes.
+  computeVisibility(proxy.rectangles);
 
   const scores = {
     thirds: scoreThirds(proxy, aspectRatio),

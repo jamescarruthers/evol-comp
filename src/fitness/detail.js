@@ -36,14 +36,17 @@ export function scoreDetail(individual, aspectRatio = 1) {
   const regionTotalArea = new Float64Array(totalRegions);
 
   for (const rect of rects) {
+    const vis = rect.visibility ?? 1;
+    if (vis <= 0) continue;
+
     const rx = Math.max(0, Math.min(aspectRatio - 0.001, rect.x));
     const ry = Math.max(0, Math.min(0.999, rect.y));
     const rr = Math.floor(ry * regionRows);
     const rc = Math.floor((rx / aspectRatio) * regionCols);
     const idx = rr * regionCols + rc;
 
-    regionPieceCount[idx]++;
-    regionTotalArea[idx] += rect.w * rect.h;
+    regionPieceCount[idx] += vis;
+    regionTotalArea[idx] += rect.w * rect.h * vis;
   }
 
   // Compute detail level per region: more pieces + smaller average = more detail
