@@ -65,13 +65,19 @@ function effectiveGrid() {
   return gridEnabled ? gridDivisions : 0;
 }
 
+/** Current canvas aspect ratio (width / height). */
+function effectiveAspect() {
+  const preset = ASPECT_PRESETS[currentAspect];
+  return preset.canvasW / preset.canvasH;
+}
+
 // ---- Palette ----
 function refreshPalette() {
   palette = generatePalette(selectedStrategy);
   renderPaletteSwatches();
 
   // Show a random composition preview
-  const preview = createRandom(palette, effectiveGrid(), tetrisMode, tetrisDivisions);
+  const preview = createRandom(palette, effectiveGrid(), tetrisMode, tetrisDivisions, effectiveAspect());
   renderBest(preview, palette, bestCanvas, bgColour);
 
   // If engine is running, update its palette
@@ -163,7 +169,7 @@ tetrisToggle.addEventListener('change', () => {
   }
 
   // Show a preview with the new mode
-  const preview = createRandom(palette, effectiveGrid(), tetrisMode, tetrisDivisions);
+  const preview = createRandom(palette, effectiveGrid(), tetrisMode, tetrisDivisions, effectiveAspect());
   renderBest(preview, palette, bestCanvas, bgColour);
 });
 
@@ -179,7 +185,7 @@ tetrisDivisionsSlider.addEventListener('input', () => {
 
   // Show a preview
   if (tetrisMode) {
-    const preview = createRandom(palette, effectiveGrid(), tetrisMode, tetrisDivisions);
+    const preview = createRandom(palette, effectiveGrid(), tetrisMode, tetrisDivisions, effectiveAspect());
     renderBest(preview, palette, bestCanvas, bgColour);
   }
 });
@@ -205,7 +211,7 @@ function applyAspectRatio(key) {
   if (engine) {
     resetEvolution();
   } else {
-    const preview = createRandom(palette, effectiveGrid(), tetrisMode, tetrisDivisions);
+    const preview = createRandom(palette, effectiveGrid(), tetrisMode, tetrisDivisions, effectiveAspect());
     renderBest(preview, palette, bestCanvas, bgColour);
   }
 }
@@ -217,7 +223,7 @@ aspectRatioSelect.addEventListener('change', () => {
 // ---- Evolution Control ----
 function startEvolution() {
   if (!engine) {
-    engine = new EvolutionEngine(palette, params, weights, effectiveGrid(), bgColour, tetrisMode, tetrisDivisions);
+    engine = new EvolutionEngine(palette, params, weights, effectiveGrid(), bgColour, tetrisMode, tetrisDivisions, effectiveAspect());
     engine.init();
   }
   running = true;
@@ -253,7 +259,7 @@ function resetEvolution() {
   btnExport.disabled = true;
 
   // Show random preview
-  const preview = createRandom(palette, effectiveGrid(), tetrisMode, tetrisDivisions);
+  const preview = createRandom(palette, effectiveGrid(), tetrisMode, tetrisDivisions, effectiveAspect());
   renderBest(preview, palette, bestCanvas, bgColour);
 
   // Clear chart
