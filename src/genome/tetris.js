@@ -193,13 +193,20 @@ function firstFromSet(set) {
 // ---- Helpers to compute rectangular grid dimensions ----
 
 /**
- * Compute gridRows and gridCols from a base grid size.
- * Always returns a square grid so that tetris blocks stay square
- * regardless of the canvas aspect ratio.  The renderer centres the
- * square grid within the canvas, adding margins as needed.
+ * Compute gridRows and gridCols from a base grid size and the canvas
+ * aspect ratio so that the tetris grid fills the entire canvas while
+ * keeping cells square.
+ *
+ * `gridSize` becomes the shorter dimension; the longer dimension is
+ * scaled proportionally to match the aspect ratio.
  */
-export function computeGridDims(gridSize, _aspectRatio) {
-  return { rows: gridSize, cols: gridSize };
+export function computeGridDims(gridSize, aspectRatio = 1) {
+  if (aspectRatio >= 1) {
+    // Landscape or square: gridSize rows, more columns
+    return { rows: gridSize, cols: Math.round(gridSize * aspectRatio) };
+  }
+  // Portrait: gridSize columns, more rows
+  return { rows: Math.round(gridSize / aspectRatio), cols: gridSize };
 }
 
 // ---- Individual creation / cloning ----
