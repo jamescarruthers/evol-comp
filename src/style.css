@@ -417,6 +417,41 @@ main {
   color: #000;
 }
 
+/* Stagnation indicator */
+.stagnation-none {
+  display: none;
+}
+
+.stagnation-mild,
+.stagnation-moderate,
+.stagnation-severe {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 3px;
+  animation: stagnation-pulse 1.5s ease-in-out infinite;
+}
+
+.stagnation-mild {
+  color: var(--accent-2);
+  background: rgba(255, 217, 61, 0.15);
+}
+
+.stagnation-moderate {
+  color: #ff8c42;
+  background: rgba(255, 140, 66, 0.15);
+}
+
+.stagnation-severe {
+  color: #ff4757;
+  background: rgba(255, 71, 87, 0.15);
+}
+
+@keyframes stagnation-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
 .muted {
   color: var(--text-muted);
   font-size: 0.8rem;

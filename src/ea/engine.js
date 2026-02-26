@@ -4,6 +4,14 @@ import { createPopulation, cloneIndividual, createRandom } from '../genome/repre
 import { tournamentSelect, crossover, mutate } from '../genome/operators.js';
 import { evaluate, DEFAULT_WEIGHTS } from '../fitness/index.js';
 
+/** Stagnation tier thresholds (consecutive stagnant generations). */
+const STAGNATION_MILD     = 10;
+const STAGNATION_MODERATE = 25;
+const STAGNATION_SEVERE   = 50;
+
+/** Fitness std-dev below this means the population has converged. */
+const DIVERSITY_THRESHOLD = 0.005;
+
 export const DEFAULT_PARAMS = {
   populationSize: 80,
   offspringPerGen: 60,
@@ -29,6 +37,8 @@ export class EvolutionEngine {
     this.history = []; // { best, avg, worst } per generation
     this.baseMutationRate = this.params.mutationRate;
     this.currentMutationRate = this.params.mutationRate;
+    this.stagnationCount = 0;
+    this.stagnationTier = 0; // 0 = none, 1 = mild, 2 = moderate, 3 = severe
   }
 
   /**
@@ -39,6 +49,8 @@ export class EvolutionEngine {
     this.generation = 0;
     this.history = [];
     this.currentMutationRate = this.params.mutationRate;
+    this.stagnationCount = 0;
+    this.stagnationTier = 0;
 
     // Evaluate initial population
     for (const ind of this.population) {
@@ -89,36 +101,123 @@ export class EvolutionEngine {
     this.generation++;
 
     this._recordHistory();
-    this._adaptMutationRate();
+    this._handleStagnation();
   }
 
   /**
-   * Adaptive mutation rate based on fitness stagnation.
+   * Detect stagnation and apply escalating interventions to break out of
+   * local optima.  Three tiers respond with increasing aggression:
+   *   Tier 1 (mild)     — bump mutation rate, 10 % immigration
+   *   Tier 2 (moderate) — spike mutation, 25 % immigration, hyper-mutate mid-pop
+   *   Tier 3 (severe)   — cataclysm: keep elites, replace everything else
    */
-  _adaptMutationRate() {
+  _handleStagnation() {
     const lookback = 10;
     if (this.history.length < lookback + 1) return;
 
     const recent = this.history.slice(-lookback);
     const improvement = recent[recent.length - 1].best - recent[0].best;
+    const diversityLow = this._isDiversityLow();
 
-    if (improvement < 0.001) {
-      // Stagnation — increase mutation rate
-      this.currentMutationRate = Math.min(0.6, this.currentMutationRate * 1.2);
-
-      // Immigration: inject random individuals (replace worst 10%)
-      const immigrationCount = Math.floor(this.params.populationSize * 0.1);
-      for (let i = 0; i < immigrationCount; i++) {
-        const idx = this.population.length - 1 - i;
-        if (idx >= this.params.elitismCount) {
-          this.population[idx] = createRandom(this.palette, this.gridDivisions, this.tetrisMode, this.tetrisDivisions, this.aspectRatio);
-          evaluate(this.population[idx], this.palette, this.weights, this.bgColour, this.aspectRatio);
-        }
-      }
+    // --- Update stagnation counter ---
+    if (improvement < 0.001 || diversityLow) {
+      this.stagnationCount++;
     } else if (improvement > 0.01) {
-      // Strong improvement — decrease mutation rate
+      // Strong progress — cool down quickly
+      this.stagnationCount = Math.max(0, this.stagnationCount - 3);
       this.currentMutationRate = Math.max(0.1, this.currentMutationRate * 0.9);
+    } else {
+      // Modest progress — cool down slowly
+      this.stagnationCount = Math.max(0, this.stagnationCount - 1);
     }
+
+    // --- Tiered response ---
+    if (this.stagnationCount >= STAGNATION_SEVERE) {
+      this.stagnationTier = 3;
+      this._cataclysm();
+    } else if (this.stagnationCount >= STAGNATION_MODERATE) {
+      this.stagnationTier = 2;
+      this._aggressiveIntervention();
+    } else if (this.stagnationCount >= STAGNATION_MILD) {
+      this.stagnationTier = 1;
+      this._mildIntervention();
+    } else {
+      this.stagnationTier = 0;
+    }
+  }
+
+  /**
+   * Check whether the population has converged (low fitness diversity).
+   */
+  _isDiversityLow() {
+    if (this.population.length < 2) return false;
+    const fitnesses = this.population.map(ind => ind.fitness);
+    const mean = fitnesses.reduce((a, b) => a + b, 0) / fitnesses.length;
+    const variance = fitnesses.reduce((sum, f) => sum + (f - mean) ** 2, 0) / fitnesses.length;
+    return Math.sqrt(variance) < DIVERSITY_THRESHOLD;
+  }
+
+  /**
+   * Tier 1 — gentle nudge: boost mutation rate, inject 10 % random immigrants.
+   */
+  _mildIntervention() {
+    this.currentMutationRate = Math.min(0.6, this.currentMutationRate * 1.2);
+
+    const immigrationCount = Math.floor(this.params.populationSize * 0.1);
+    for (let i = 0; i < immigrationCount; i++) {
+      const idx = this.population.length - 1 - i;
+      if (idx >= this.params.elitismCount) {
+        this.population[idx] = createRandom(this.palette, this.gridDivisions, this.tetrisMode, this.tetrisDivisions, this.aspectRatio);
+        evaluate(this.population[idx], this.palette, this.weights, this.bgColour, this.aspectRatio);
+      }
+    }
+  }
+
+  /**
+   * Tier 2 — aggressive shake-up: spike mutation, 25 % immigration, and
+   * hyper-mutate the middle of the population (between elites and immigrants).
+   */
+  _aggressiveIntervention() {
+    this.currentMutationRate = Math.min(0.8, this.currentMutationRate * 1.5);
+
+    // Replace worst 25 % with fresh random individuals
+    const immigrationCount = Math.floor(this.params.populationSize * 0.25);
+    for (let i = 0; i < immigrationCount; i++) {
+      const idx = this.population.length - 1 - i;
+      if (idx >= this.params.elitismCount) {
+        this.population[idx] = createRandom(this.palette, this.gridDivisions, this.tetrisMode, this.tetrisDivisions, this.aspectRatio);
+        evaluate(this.population[idx], this.palette, this.weights, this.bgColour, this.aspectRatio);
+      }
+    }
+
+    // Hyper-mutate the middle band (not elites, not fresh immigrants)
+    const midStart = this.params.elitismCount;
+    const midEnd = this.population.length - immigrationCount;
+    for (let i = midStart; i < midEnd; i++) {
+      mutate(this.population[i], 0.9, this.palette.length, this.gridDivisions, this.aspectRatio);
+      evaluate(this.population[i], this.palette, this.weights, this.bgColour, this.aspectRatio);
+    }
+  }
+
+  /**
+   * Tier 3 — cataclysm: preserve only the elite few, replace the entire rest
+   * of the population with fresh random individuals, and reset stagnation.
+   */
+  _cataclysm() {
+    const keepCount = Math.max(this.params.elitismCount, 2);
+
+    for (let i = keepCount; i < this.population.length; i++) {
+      this.population[i] = createRandom(this.palette, this.gridDivisions, this.tetrisMode, this.tetrisDivisions, this.aspectRatio);
+      evaluate(this.population[i], this.palette, this.weights, this.bgColour, this.aspectRatio);
+    }
+
+    // Reset mutation to base with a small boost to keep exploring
+    this.currentMutationRate = Math.min(0.5, this.baseMutationRate * 1.5);
+
+    // Reset stagnation so the cycle can begin afresh
+    this.stagnationCount = 0;
+
+    this.population.sort((a, b) => b.fitness - a.fitness);
   }
 
   /**
