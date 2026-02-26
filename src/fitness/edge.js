@@ -4,7 +4,7 @@
  * Penalise rectangles that are mostly off-canvas.
  * Allow up to 30% off-screen per rectangle (partial bleed is a valid compositional choice).
  */
-export function scoreEdgePenalty(individual) {
+export function scoreEdgePenalty(individual, aspectRatio = 1) {
   const rects = individual.rectangles;
   if (rects.length === 0) return 1;
 
@@ -19,9 +19,9 @@ export function scoreEdgePenalty(individual) {
     const area = rect.w * rect.h;
     if (area === 0) continue;
 
-    // Clipped rectangle within [0,1] × [0,1]
+    // Clipped rectangle within [0, aspectRatio] × [0, 1]
     const clippedLeft = Math.max(0, left);
-    const clippedRight = Math.min(1, right);
+    const clippedRight = Math.min(aspectRatio, right);
     const clippedTop = Math.max(0, top);
     const clippedBottom = Math.min(1, bottom);
 

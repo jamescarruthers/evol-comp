@@ -55,7 +55,7 @@ function hexToRgb(hex) {
  * @param {Array} palette - colour palette
  * @param {string} bgColour - CSS hex colour for the background
  */
-export function scoreColour(individual, palette, bgColour = '#f5f5f0') {
+export function scoreColour(individual, palette, bgColour = '#f5f5f0', aspectRatio = 1) {
   const rects = individual.rectangles;
   if (rects.length === 0 || palette.length === 0) return 0;
 
@@ -72,8 +72,9 @@ export function scoreColour(individual, palette, bgColour = '#f5f5f0') {
     totalRectArea += area;
   }
 
-  // Estimate visible background area (1 - coverage, clamped)
-  const bgArea = Math.max(0, 1 - totalRectArea * 0.7); // approximate since overlaps reduce coverage
+  // Estimate visible background area (canvas area - coverage, clamped)
+  const canvasArea = aspectRatio; // isotropic coords: width = aspectRatio, height = 1
+  const bgArea = Math.max(0, canvasArea - totalRectArea * 0.7); // approximate since overlaps reduce coverage
 
   const totalArea = totalRectArea + bgArea;
   let entropy = 0;

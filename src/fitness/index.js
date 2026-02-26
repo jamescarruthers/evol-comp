@@ -28,9 +28,10 @@ export const DEFAULT_WEIGHTS = {
  * @param {Array} palette - colour palette
  * @param {Object} weights - weight per fitness component
  * @param {string} bgColour - background colour (CSS hex)
+ * @param {number} aspectRatio - canvas width/height ratio
  * @returns {number} fitness score 0–1
  */
-export function evaluate(individual, palette, weights = DEFAULT_WEIGHTS, bgColour = '#f5f5f0') {
+export function evaluate(individual, palette, weights = DEFAULT_WEIGHTS, bgColour = '#f5f5f0', aspectRatio = 1) {
   // For tetris individuals, create a proxy with pseudo-rectangles for fitness
   let proxy = individual;
   if (individual.mode === 'tetris') {
@@ -38,14 +39,14 @@ export function evaluate(individual, palette, weights = DEFAULT_WEIGHTS, bgColou
   }
 
   const scores = {
-    thirds: scoreThirds(proxy),
-    balance: scoreBalance(proxy, palette),
-    symmetry: scoreSymmetry(proxy),
+    thirds: scoreThirds(proxy, aspectRatio),
+    balance: scoreBalance(proxy, palette, aspectRatio),
+    symmetry: scoreSymmetry(proxy, aspectRatio),
     overlap: scoreOverlap(proxy),
-    colour: scoreColour(proxy, palette, bgColour),
-    variety: scoreVariety(proxy),
-    edge: scoreEdgePenalty(proxy),
-    detail: scoreDetail(proxy)
+    colour: scoreColour(proxy, palette, bgColour, aspectRatio),
+    variety: scoreVariety(proxy, aspectRatio),
+    edge: scoreEdgePenalty(proxy, aspectRatio),
+    detail: scoreDetail(proxy, aspectRatio)
   };
 
   let fitness = 0;

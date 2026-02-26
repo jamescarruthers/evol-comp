@@ -6,7 +6,7 @@ import { gaussianScore } from '../palette/harmony.js';
  * Score size variety (coefficient of variation of rectangle areas)
  * and canvas coverage.
  */
-export function scoreVariety(individual) {
+export function scoreVariety(individual, aspectRatio = 1) {
   const rects = individual.rectangles;
   if (rects.length === 0) return 0;
 
@@ -27,8 +27,10 @@ export function scoreVariety(individual) {
   // 2. Coverage: approximate union area / canvas area
   // Use a simple approximation — sum of areas minus estimated overlaps
   const totalArea = areas.reduce((a, b) => a + b, 0);
+  // Canvas area in isotropic coords is aspectRatio × 1
+  const canvasArea = aspectRatio;
   // Clamp coverage to 0–1
-  const coverage = Math.min(1, totalArea);
+  const coverage = Math.min(1, totalArea / canvasArea);
 
   // Ideal coverage: 40–75%
   const coverageScore = gaussianScore(coverage, 0.55, 0.15);

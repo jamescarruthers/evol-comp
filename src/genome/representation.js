@@ -71,7 +71,7 @@ export function createRandom(palette, gridDivisions = 0, tetrisMode = false, tet
   const rectangles = [];
   for (let i = 0; i < count; i++) {
     const rect = {
-      x: Math.random(),
+      x: Math.random() * aspectRatio,
       y: Math.random(),
       w: 0.05 + Math.random() * 0.45,
       h: 0.05 + Math.random() * 0.45,

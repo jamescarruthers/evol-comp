@@ -13,10 +13,11 @@
  * points and normalised by totalArea × 4, which capped the achievable
  * score at roughly 0.29 regardless of placement.
  */
-export function scoreThirds(individual) {
+export function scoreThirds(individual, aspectRatio = 1) {
+  const ar = aspectRatio;
   const powerPoints = [
-    [1 / 3, 1 / 3], [2 / 3, 1 / 3],
-    [1 / 3, 2 / 3], [2 / 3, 2 / 3]
+    [ar / 3, 1 / 3], [2 * ar / 3, 1 / 3],
+    [ar / 3, 2 / 3], [2 * ar / 3, 2 / 3]
   ];
   const sigma = 0.10;
   const sigmaSquared2 = 2 * sigma * sigma;
