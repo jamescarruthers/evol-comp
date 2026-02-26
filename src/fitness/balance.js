@@ -3,9 +3,9 @@
 /**
  * Score visual balance using centre-of-mass approach.
  * Darker and more saturated colours feel "heavier".
- * Perfect balance = centre of mass at canvas centre (0.5, 0.5).
+ * Perfect balance = centre of mass at canvas centre.
  */
-export function scoreBalance(individual, palette) {
+export function scoreBalance(individual, palette, aspectRatio = 1) {
   const rects = individual.rectangles;
   if (rects.length === 0) return 0;
 
@@ -28,10 +28,10 @@ export function scoreBalance(individual, palette) {
   comX /= totalWeight;
   comY /= totalWeight;
 
-  const dx = comX - 0.5;
+  const dx = comX - aspectRatio / 2;
   const dy = comY - 0.5;
   const distance = Math.sqrt(dx * dx + dy * dy);
-  const maxDistance = Math.SQRT2 / 2; // ~0.707
+  const maxDistance = Math.sqrt((aspectRatio / 2) ** 2 + 0.25);
 
   return 1 - (distance / maxDistance);
 }

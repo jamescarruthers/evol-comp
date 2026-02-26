@@ -50,9 +50,10 @@ export function uniformCrossover(parentA, parentB, paletteLength) {
  * Spatial split crossover.
  * A random line divides the canvas; offspring gets rectangles from each parent on each side.
  */
-export function spatialCrossover(parentA, parentB, paletteLength) {
+export function spatialCrossover(parentA, parentB, paletteLength, aspectRatio = 1) {
   const vertical = Math.random() < 0.5;
-  const splitPos = 0.2 + Math.random() * 0.6;
+  const range = vertical ? aspectRatio : 1;
+  const splitPos = 0.2 * range + Math.random() * 0.6 * range;
 
   const rectangles = [];
 
@@ -91,8 +92,9 @@ export function spatialCrossover(parentA, parentB, paletteLength) {
  * Perform crossover using a randomly chosen method.
  * Dispatches to tetris crossover if parents are tetris-mode individuals.
  * @param {number} gridDivisions - grid divisions for snapping (0 = disabled)
+ * @param {number} aspectRatio - canvas width/height ratio
  */
-export function crossover(parentA, parentB, paletteLength, gridDivisions = 0) {
+export function crossover(parentA, parentB, paletteLength, gridDivisions = 0, aspectRatio = 1) {
   // Tetris mode dispatch
   if (parentA.mode === 'tetris' && parentB.mode === 'tetris') {
     return crossoverTetris(parentA, parentB, paletteLength);
@@ -102,7 +104,7 @@ export function crossover(parentA, parentB, paletteLength, gridDivisions = 0) {
   if (Math.random() < 0.5) {
     offspring = uniformCrossover(parentA, parentB, paletteLength);
   } else {
-    offspring = spatialCrossover(parentA, parentB, paletteLength);
+    offspring = spatialCrossover(parentA, parentB, paletteLength, aspectRatio);
   }
 
   // Apply grid snapping to offspring rectangles
@@ -122,8 +124,9 @@ export function crossover(parentA, parentB, paletteLength, gridDivisions = 0) {
  * @param {number} mutationRate - probability of mutating each rectangle
  * @param {number} paletteLength - number of colours in palette
  * @param {number} gridDivisions - grid divisions for snapping (0 = disabled)
+ * @param {number} aspectRatio - canvas width/height ratio
  */
-export function mutate(individual, mutationRate, paletteLength, gridDivisions = 0) {
+export function mutate(individual, mutationRate, paletteLength, gridDivisions = 0, aspectRatio = 1) {
   if (individual.mode === 'tetris') {
     mutateTetris(individual, mutationRate, paletteLength);
     return;
@@ -140,7 +143,8 @@ export function mutate(individual, mutationRate, paletteLength, gridDivisions = 
       // Nudge position — 30 % of nudges drift toward the nearest
       // rule-of-thirds power point for gentle compositional pressure
       if (Math.random() < 0.3) {
-        const powerPoints = [[1/3,1/3],[2/3,1/3],[1/3,2/3],[2/3,2/3]];
+        const ar = aspectRatio;
+        const powerPoints = [[ar/3,1/3],[2*ar/3,1/3],[ar/3,2/3],[2*ar/3,2/3]];
         let nearestDist = Infinity, nearest;
         for (const pp of powerPoints) {
           const d = (rects[i].x - pp[0]) ** 2 + (rects[i].y - pp[1]) ** 2;
@@ -153,7 +157,7 @@ export function mutate(individual, mutationRate, paletteLength, gridDivisions = 
         rects[i].x += gaussRandom(0.05);
         rects[i].y += gaussRandom(0.05);
       }
-      rects[i].x = Math.max(-0.2, Math.min(1.2, rects[i].x));
+      rects[i].x = Math.max(-0.2, Math.min(aspectRatio + 0.2, rects[i].x));
       rects[i].y = Math.max(-0.2, Math.min(1.2, rects[i].y));
     } else if (mutationType < 0.45) {
       // Resize
@@ -198,7 +202,7 @@ export function mutate(individual, mutationRate, paletteLength, gridDivisions = 
       // Add rectangle
       if (rects.length < RECT_COUNT_MAX) {
         rects.push({
-          x: Math.random(),
+          x: Math.random() * aspectRatio,
           y: Math.random(),
           w: 0.05 + Math.random() * 0.45,
           h: 0.05 + Math.random() * 0.45,
@@ -218,7 +222,7 @@ export function mutate(individual, mutationRate, paletteLength, gridDivisions = 
         if (Math.random() < 0.5) {
           // Mirror duplicate — reflect across the vertical axis to aid symmetry
           rects.push({
-            x: 1 - rects[i].x,
+            x: aspectRatio - rects[i].x,
             y: rects[i].y + gaussRandom(0.02),
             w: rects[i].w,
             h: rects[i].h,

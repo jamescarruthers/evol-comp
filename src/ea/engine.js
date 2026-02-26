@@ -42,7 +42,7 @@ export class EvolutionEngine {
 
     // Evaluate initial population
     for (const ind of this.population) {
-      evaluate(ind, this.palette, this.weights, this.bgColour);
+      evaluate(ind, this.palette, this.weights, this.bgColour, this.aspectRatio);
     }
     this.population.sort((a, b) => b.fitness - a.fitness);
     this._recordHistory();
@@ -71,7 +71,7 @@ export class EvolutionEngine {
 
       let offspring;
       if (Math.random() < crossoverRate) {
-        offspring = crossover(parentA, parentB, this.palette.length, this.gridDivisions);
+        offspring = crossover(parentA, parentB, this.palette.length, this.gridDivisions, this.aspectRatio);
       } else {
         // Clone the better parent
         offspring = cloneIndividual(parentA.fitness >= parentB.fitness ? parentA : parentB);
@@ -79,8 +79,8 @@ export class EvolutionEngine {
         offspring.scores = null;
       }
 
-      mutate(offspring, this.currentMutationRate, this.palette.length, this.gridDivisions);
-      evaluate(offspring, this.palette, this.weights, this.bgColour);
+      mutate(offspring, this.currentMutationRate, this.palette.length, this.gridDivisions, this.aspectRatio);
+      evaluate(offspring, this.palette, this.weights, this.bgColour, this.aspectRatio);
       nextGen.push(offspring);
     }
 
@@ -112,7 +112,7 @@ export class EvolutionEngine {
         const idx = this.population.length - 1 - i;
         if (idx >= this.params.elitismCount) {
           this.population[idx] = createRandom(this.palette, this.gridDivisions, this.tetrisMode, this.tetrisDivisions, this.aspectRatio);
-          evaluate(this.population[idx], this.palette, this.weights, this.bgColour);
+          evaluate(this.population[idx], this.palette, this.weights, this.bgColour, this.aspectRatio);
         }
       }
     } else if (improvement > 0.01) {
@@ -159,7 +159,7 @@ export class EvolutionEngine {
     this.weights = { ...weights };
     // Re-evaluate entire population with new weights
     for (const ind of this.population) {
-      evaluate(ind, this.palette, this.weights, this.bgColour);
+      evaluate(ind, this.palette, this.weights, this.bgColour, this.aspectRatio);
     }
     this.population.sort((a, b) => b.fitness - a.fitness);
   }
@@ -171,7 +171,7 @@ export class EvolutionEngine {
     this.palette = palette;
     // Re-evaluate since colour-dependent fitness changes
     for (const ind of this.population) {
-      evaluate(ind, this.palette, this.weights, this.bgColour);
+      evaluate(ind, this.palette, this.weights, this.bgColour, this.aspectRatio);
     }
     this.population.sort((a, b) => b.fitness - a.fitness);
   }
@@ -182,7 +182,7 @@ export class EvolutionEngine {
   setBgColour(bgColour) {
     this.bgColour = bgColour;
     for (const ind of this.population) {
-      evaluate(ind, this.palette, this.weights, this.bgColour);
+      evaluate(ind, this.palette, this.weights, this.bgColour, this.aspectRatio);
     }
     this.population.sort((a, b) => b.fitness - a.fitness);
   }

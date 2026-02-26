@@ -22,28 +22,33 @@ const REGIONS = 4; // divide canvas into 4×4 spatial regions
  * @param {Object} individual - individual with .rectangles array
  * @returns {number} score 0–1
  */
-export function scoreDetail(individual) {
+export function scoreDetail(individual, aspectRatio = 1) {
   const rects = individual.rectangles;
   if (!rects || rects.length < 2) return 0.5;
 
+  // Use more columns for wider canvases to keep regions roughly square
+  const regionCols = Math.max(REGIONS, Math.round(REGIONS * aspectRatio));
+  const regionRows = REGIONS;
+  const totalRegions = regionRows * regionCols;
+
   // Count pieces and total area per region
-  const regionPieceCount = new Float64Array(REGIONS * REGIONS);
-  const regionTotalArea = new Float64Array(REGIONS * REGIONS);
+  const regionPieceCount = new Float64Array(totalRegions);
+  const regionTotalArea = new Float64Array(totalRegions);
 
   for (const rect of rects) {
-    const rx = Math.max(0, Math.min(0.999, rect.x));
+    const rx = Math.max(0, Math.min(aspectRatio - 0.001, rect.x));
     const ry = Math.max(0, Math.min(0.999, rect.y));
-    const rr = Math.floor(ry * REGIONS);
-    const rc = Math.floor(rx * REGIONS);
-    const idx = rr * REGIONS + rc;
+    const rr = Math.floor(ry * regionRows);
+    const rc = Math.floor((rx / aspectRatio) * regionCols);
+    const idx = rr * regionCols + rc;
 
     regionPieceCount[idx]++;
     regionTotalArea[idx] += rect.w * rect.h;
   }
 
   // Compute detail level per region: more pieces + smaller average = more detail
-  const detailLevels = new Float64Array(REGIONS * REGIONS);
-  for (let i = 0; i < REGIONS * REGIONS; i++) {
+  const detailLevels = new Float64Array(totalRegions);
+  for (let i = 0; i < totalRegions; i++) {
     if (regionPieceCount[i] === 0) {
       detailLevels[i] = 0;
     } else {
@@ -77,23 +82,24 @@ export function scoreDetail(individual) {
       const p = norm[i] / total;
       if (p > 0) entropy -= p * Math.log2(p);
     }
-    entropy /= Math.log2(REGIONS * REGIONS); // normalise to 0–1
+    entropy /= Math.log2(totalRegions); // normalise to 0–1
   }
   // Peak at ~0.7 — varied but not completely uniform
   const varietyScore = gaussianScore(entropy, 0.7, 0.2);
 
   // --- 2. Focal quality (35%) ---
   // High detail near the four rule-of-thirds power points
+  const ar = aspectRatio;
   const powerPoints = [
-    [1 / 3, 1 / 3], [2 / 3, 1 / 3],
-    [1 / 3, 2 / 3], [2 / 3, 2 / 3]
+    [ar / 3, 1 / 3], [2 * ar / 3, 1 / 3],
+    [ar / 3, 2 / 3], [2 * ar / 3, 2 / 3]
   ];
 
   let focalScore = 0;
   for (const [px, py] of powerPoints) {
-    const r = Math.floor(py * REGIONS);
-    const c = Math.floor(px * REGIONS);
-    focalScore += norm[r * REGIONS + c];
+    const r = Math.min(regionRows - 1, Math.floor(py * regionRows));
+    const c = Math.min(regionCols - 1, Math.floor((px / ar) * regionCols));
+    focalScore += norm[r * regionCols + c];
   }
   focalScore /= powerPoints.length;
 
@@ -101,15 +107,15 @@ export function scoreDetail(individual) {
   // Neighbouring regions should transition smoothly
   let coherence = 0;
   let pairs = 0;
-  for (let r = 0; r < REGIONS; r++) {
-    for (let c = 0; c < REGIONS; c++) {
-      const idx = r * REGIONS + c;
-      if (c < REGIONS - 1) {
+  for (let r = 0; r < regionRows; r++) {
+    for (let c = 0; c < regionCols; c++) {
+      const idx = r * regionCols + c;
+      if (c < regionCols - 1) {
         coherence += 1 - Math.abs(norm[idx] - norm[idx + 1]);
         pairs++;
       }
-      if (r < REGIONS - 1) {
-        coherence += 1 - Math.abs(norm[idx] - norm[(r + 1) * REGIONS + c]);
+      if (r < regionRows - 1) {
+        coherence += 1 - Math.abs(norm[idx] - norm[(r + 1) * regionCols + c]);
         pairs++;
       }
     }

@@ -6,16 +6,18 @@ import { gaussianScore } from '../palette/harmony.js';
  * Score bilateral symmetry (vertical axis).
  * Uses a soft target — peak score at ~70% symmetry (perfect symmetry is boring).
  */
-export function scoreSymmetry(individual) {
+export function scoreSymmetry(individual, aspectRatio = 1) {
   const rects = individual.rectangles;
   if (rects.length < 2) return 0.5;
+
+  const midX = aspectRatio / 2;
 
   // Split into left-side and right-side rectangles
   const leftRects = [];
   const rightRects = [];
 
   for (const rect of rects) {
-    if (rect.x < 0.5) {
+    if (rect.x < midX) {
       leftRects.push(rect);
     } else {
       rightRects.push(rect);
@@ -29,7 +31,7 @@ export function scoreSymmetry(individual) {
   let matchCount = 0;
 
   for (const lr of leftRects) {
-    const mirroredX = 1 - lr.x;
+    const mirroredX = aspectRatio - lr.x;
     let bestDist = Infinity;
 
     for (const rr of rightRects) {

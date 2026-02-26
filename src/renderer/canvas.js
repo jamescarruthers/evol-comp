@@ -20,15 +20,19 @@ export function renderIndividual(ctx, individual, palette, width, height, bgColo
   ctx.fillStyle = bgColour;
   ctx.fillRect(0, 0, width, height);
 
+  // Use height as the uniform scale so coordinates are isotropic:
+  // x ranges [0, width/height], y ranges [0, 1], w and h in same units.
+  const scale = height;
+
   // Sort by z-order (lower z draws first / further back)
   const sorted = [...individual.rectangles].sort((a, b) => a.z - b.z);
 
   for (const rect of sorted) {
     const colour = palette[rect.colourIndex % palette.length];
-    const px = rect.x * width;
-    const py = rect.y * height;
-    const pw = rect.w * width;
-    const ph = rect.h * height;
+    const px = rect.x * scale;
+    const py = rect.y * scale;
+    const pw = rect.w * scale;
+    const ph = rect.h * scale;
 
     ctx.fillStyle = `rgb(${colour.rgb[0]}, ${colour.rgb[1]}, ${colour.rgb[2]})`;
     ctx.fillRect(px - pw / 2, py - ph / 2, pw, ph);
