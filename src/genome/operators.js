@@ -95,7 +95,7 @@ export function spatialCrossover(parentA, parentB, paletteLength) {
 export function crossover(parentA, parentB, paletteLength, gridDivisions = 0) {
   // Tetris mode dispatch
   if (parentA.mode === 'tetris' && parentB.mode === 'tetris') {
-    return crossoverTetris(parentA, parentB, paletteLength, parentA.gridSize);
+    return crossoverTetris(parentA, parentB, paletteLength);
   }
 
   let offspring;

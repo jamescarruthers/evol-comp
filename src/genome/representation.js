@@ -61,10 +61,10 @@ export function snapToGrid(rect, gridDivisions) {
  * @param {number} tetrisDivisions - nesting depth for tetris (1 = flat, 2+ = nested)
  * @returns {Object} individual with rectangles array and null fitness
  */
-export function createRandom(palette, gridDivisions = 0, tetrisMode = false, tetrisDivisions = 1) {
+export function createRandom(palette, gridDivisions = 0, tetrisMode = false, tetrisDivisions = 1, aspectRatio = 1) {
   if (tetrisMode) {
     const gs = gridDivisions > 0 ? gridDivisions : 8;
-    return createRandomTetris(palette, gs, tetrisDivisions);
+    return createRandomTetris(palette, gs, tetrisDivisions, aspectRatio);
   }
 
   const count = RECT_COUNT_MIN + Math.floor(Math.random() * (RECT_COUNT_MAX - RECT_COUNT_MIN + 1));
@@ -107,10 +107,10 @@ export function cloneIndividual(individual) {
  * @param {number} tetrisDivisions - nesting depth for tetris (1 = flat, 2+ = nested)
  * @returns {Array} population array
  */
-export function createPopulation(size, palette, gridDivisions = 0, tetrisMode = false, tetrisDivisions = 1) {
+export function createPopulation(size, palette, gridDivisions = 0, tetrisMode = false, tetrisDivisions = 1, aspectRatio = 1) {
   const population = [];
   for (let i = 0; i < size; i++) {
-    population.push(createRandom(palette, gridDivisions, tetrisMode, tetrisDivisions));
+    population.push(createRandom(palette, gridDivisions, tetrisMode, tetrisDivisions, aspectRatio));
   }
   return population;
 }

@@ -37,23 +37,23 @@ export function renderIndividual(ctx, individual, palette, width, height, bgColo
 
 /**
  * Render a tetris-tiled individual.
- * Each cell is drawn as a coloured square; cells of the same piece share
- * colour with no gap between them, while a thin gap separates different
- * pieces to show the interlocking structure.
+ * Cells are always square; the grid is centred within the canvas.
  */
 function renderTetrisIndividual(ctx, individual, palette, width, height, bgColour) {
-  const { grid, pieces, gridSize } = individual;
-  const cellW = width / gridSize;
-  const cellH = height / gridSize;
-  // Scale gap with canvas size so it looks good at all resolutions
-  const gap = Math.max(1, Math.round(Math.min(cellW, cellH) * 0.06));
+  const { grid, pieces, gridRows, gridCols } = individual;
+
+  // Square cells — pick the size that fits, centre the grid
+  const cellSize = Math.min(width / gridCols, height / gridRows);
+  const offsetX = (width - gridCols * cellSize) / 2;
+  const offsetY = (height - gridRows * cellSize) / 2;
+  const gap = Math.max(1, Math.round(cellSize * 0.06));
 
   // Background
   ctx.fillStyle = bgColour;
   ctx.fillRect(0, 0, width, height);
 
-  for (let r = 0; r < gridSize; r++) {
-    for (let c = 0; c < gridSize; c++) {
+  for (let r = 0; r < gridRows; r++) {
+    for (let c = 0; c < gridCols; c++) {
       const pieceId = grid[r][c];
       if (pieceId < 0) continue;
 
@@ -63,20 +63,19 @@ function renderTetrisIndividual(ctx, individual, palette, width, height, bgColou
       const colour = palette[piece.colourIndex % palette.length];
       ctx.fillStyle = `rgb(${colour.rgb[0]}, ${colour.rgb[1]}, ${colour.rgb[2]})`;
 
-      const x = c * cellW;
-      const y = r * cellH;
+      const x = offsetX + c * cellSize;
+      const y = offsetY + r * cellSize;
 
-      // Determine which edges border a different piece (or the canvas edge)
       const gapTop = (r === 0 || grid[r - 1][c] !== pieceId) ? gap : 0;
       const gapLeft = (c === 0 || grid[r][c - 1] !== pieceId) ? gap : 0;
-      const gapBottom = (r === gridSize - 1 || grid[r + 1][c] !== pieceId) ? gap : 0;
-      const gapRight = (c === gridSize - 1 || grid[r][c + 1] !== pieceId) ? gap : 0;
+      const gapBottom = (r === gridRows - 1 || grid[r + 1][c] !== pieceId) ? gap : 0;
+      const gapRight = (c === gridCols - 1 || grid[r][c + 1] !== pieceId) ? gap : 0;
 
       ctx.fillRect(
         x + gapLeft,
         y + gapTop,
-        cellW - gapLeft - gapRight,
-        cellH - gapTop - gapBottom
+        cellSize - gapLeft - gapRight,
+        cellSize - gapTop - gapBottom
       );
     }
   }
