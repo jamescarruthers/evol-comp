@@ -19,7 +19,9 @@ export function renderBest(individual, palette, canvas, bgColour = '#f5f5f0') {
  * @param {number} thumbSize - size of each thumbnail in pixels
  * @param {string} bgColour - background colour
  */
-export function renderGrid(individuals, palette, gridContainer, thumbSize = 80, bgColour = '#f5f5f0') {
+export function renderGrid(individuals, palette, gridContainer, thumbW = 80, bgColour = '#f5f5f0', thumbH = 0) {
+  const th = thumbH || thumbW;
+
   // Ensure we have the right number of canvases
   const existing = gridContainer.querySelectorAll('canvas');
   while (existing.length > individuals.length) {
@@ -32,15 +34,17 @@ export function renderGrid(individuals, palette, gridContainer, thumbSize = 80, 
       canvas = existing[i];
     } else {
       canvas = document.createElement('canvas');
-      canvas.width = thumbSize;
-      canvas.height = thumbSize;
       canvas.className = 'grid-thumb';
       canvas.dataset.index = i;
       gridContainer.appendChild(canvas);
     }
 
+    canvas.width = thumbW;
+    canvas.height = th;
+    canvas.style.aspectRatio = thumbW + ' / ' + th;
+
     const ctx = canvas.getContext('2d');
-    renderIndividual(ctx, individuals[i], palette, thumbSize, thumbSize, bgColour);
+    renderIndividual(ctx, individuals[i], palette, thumbW, th, bgColour);
   }
 }
 
@@ -164,7 +168,8 @@ export function renderScoreBreakdown(container, scores, weights) {
     overlap: 'Overlap Quality',
     colour: 'Colour Dist.',
     variety: 'Size Variety',
-    edge: 'Edge Penalty'
+    edge: 'Edge Penalty',
+    detail: 'Detail Dist.'
   };
 
   let html = '';

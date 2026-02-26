@@ -15,13 +15,14 @@ export const DEFAULT_PARAMS = {
 };
 
 export class EvolutionEngine {
-  constructor(palette, params = {}, weights = null, gridDivisions = 0, bgColour = '#f5f5f0', tetrisMode = false) {
+  constructor(palette, params = {}, weights = null, gridDivisions = 0, bgColour = '#f5f5f0', tetrisMode = false, tetrisDivisions = 1) {
     this.palette = palette;
     this.params = { ...DEFAULT_PARAMS, ...params };
     this.weights = weights ? { ...weights } : { ...DEFAULT_WEIGHTS };
     this.gridDivisions = gridDivisions;
     this.bgColour = bgColour;
     this.tetrisMode = tetrisMode;
+    this.tetrisDivisions = tetrisDivisions;
     this.population = [];
     this.generation = 0;
     this.history = []; // { best, avg, worst } per generation
@@ -33,7 +34,7 @@ export class EvolutionEngine {
    * Initialise the population with random individuals.
    */
   init() {
-    this.population = createPopulation(this.params.populationSize, this.palette, this.gridDivisions, this.tetrisMode);
+    this.population = createPopulation(this.params.populationSize, this.palette, this.gridDivisions, this.tetrisMode, this.tetrisDivisions);
     this.generation = 0;
     this.history = [];
     this.currentMutationRate = this.params.mutationRate;
@@ -109,7 +110,7 @@ export class EvolutionEngine {
       for (let i = 0; i < immigrationCount; i++) {
         const idx = this.population.length - 1 - i;
         if (idx >= this.params.elitismCount) {
-          this.population[idx] = createRandom(this.palette, this.gridDivisions, this.tetrisMode);
+          this.population[idx] = createRandom(this.palette, this.gridDivisions, this.tetrisMode, this.tetrisDivisions);
           evaluate(this.population[idx], this.palette, this.weights, this.bgColour);
         }
       }
@@ -190,5 +191,12 @@ export class EvolutionEngine {
    */
   setGridDivisions(gridDivisions) {
     this.gridDivisions = gridDivisions;
+  }
+
+  /**
+   * Update tetris nesting divisions.
+   */
+  setTetrisDivisions(tetrisDivisions) {
+    this.tetrisDivisions = tetrisDivisions;
   }
 }

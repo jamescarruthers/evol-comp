@@ -31,7 +31,7 @@ export function generateTiling(gridSize, paletteLength) {
   while (unoccupied.size > 0) {
     // Pick the first remaining unoccupied cell (scan order gives more
     // uniform coverage than random selection)
-    const startKey = firstFromSet(unoccupied, gridSize);
+    const startKey = firstFromSet(unoccupied);
     const startR = Math.floor(startKey / gridSize);
     const startC = startKey % gridSize;
 
@@ -82,8 +82,126 @@ export function generateTiling(gridSize, paletteLength) {
   return { grid, pieces };
 }
 
+/**
+ * Generate a nested tiling: first tile at coarse resolution, then subdivide
+ * some pieces into finer tetris pieces to create areas of detail.
+ *
+ * @param {number} baseGridSize - coarse grid size (e.g. 8)
+ * @param {number} paletteLength - number of colours in palette
+ * @param {number} divisions - nesting level (2 = each coarse cell → 2×2 sub-cells, etc.)
+ * @returns {{ grid: number[][], pieces: Array<{id:number, cells:Array<{r:number,c:number}>, colourIndex:number, depth:number}> }}
+ */
+export function generateNestedTiling(baseGridSize, paletteLength, divisions) {
+  const fineSize = baseGridSize * divisions;
+  const fineGrid = Array.from({ length: fineSize }, () => new Array(fineSize).fill(-1));
+  const pieces = [];
+  let pieceId = 0;
+
+  // Step 1: Generate coarse tiling
+  const coarse = generateTiling(baseGridSize, paletteLength);
+
+  // Step 2: Decide which pieces to subdivide (~50%)
+  const subdivideProb = 0.5;
+  const subdividedIds = new Set();
+  for (const piece of coarse.pieces) {
+    if (Math.random() < subdivideProb) {
+      subdividedIds.add(piece.id);
+    }
+  }
+
+  // Step 3: Place non-subdivided pieces as large blocks in the fine grid
+  for (const piece of coarse.pieces) {
+    if (subdividedIds.has(piece.id)) continue;
+
+    const fineCells = [];
+    for (const cell of piece.cells) {
+      for (let dr = 0; dr < divisions; dr++) {
+        for (let dc = 0; dc < divisions; dc++) {
+          const fr = cell.r * divisions + dr;
+          const fc = cell.c * divisions + dc;
+          fineGrid[fr][fc] = pieceId;
+          fineCells.push({ r: fr, c: fc });
+        }
+      }
+    }
+
+    pieces.push({
+      id: pieceId,
+      cells: fineCells,
+      colourIndex: piece.colourIndex,
+      depth: 0
+    });
+    pieceId++;
+  }
+
+  // Step 4: Fill subdivided pieces with small tetris pieces
+  const DIRS = [[0, 1], [0, -1], [1, 0], [-1, 0]];
+
+  for (const piece of coarse.pieces) {
+    if (!subdividedIds.has(piece.id)) continue;
+
+    // Collect all fine cells belonging to this coarse piece
+    const freeCells = new Set();
+    for (const cell of piece.cells) {
+      for (let dr = 0; dr < divisions; dr++) {
+        for (let dc = 0; dc < divisions; dc++) {
+          const fr = cell.r * divisions + dr;
+          const fc = cell.c * divisions + dc;
+          freeCells.add(fr * fineSize + fc);
+        }
+      }
+    }
+
+    // Tile these cells with small tetromino-like pieces
+    while (freeCells.size > 0) {
+      let minKey = Infinity;
+      for (const k of freeCells) if (k < minKey) minKey = k;
+
+      const startR = Math.floor(minKey / fineSize);
+      const startC = minKey % fineSize;
+
+      const cells = [{ r: startR, c: startC }];
+      const cellSet = new Set([minKey]);
+
+      while (cells.length < 4) {
+        const frontier = [];
+        for (const c of cells) {
+          for (const [dr, dc] of DIRS) {
+            const nr = c.r + dr;
+            const nc = c.c + dc;
+            const key = nr * fineSize + nc;
+            if (freeCells.has(key) && !cellSet.has(key)) {
+              frontier.push({ r: nr, c: nc, key });
+            }
+          }
+        }
+        if (frontier.length === 0) break;
+        const next = frontier[Math.floor(Math.random() * frontier.length)];
+        cells.push({ r: next.r, c: next.c });
+        cellSet.add(next.key);
+      }
+
+      for (const c of cells) {
+        const key = c.r * fineSize + c.c;
+        fineGrid[c.r][c.c] = pieceId;
+        freeCells.delete(key);
+      }
+
+      pieces.push({
+        id: pieceId,
+        cells,
+        colourIndex: Math.floor(Math.random() * paletteLength),
+        depth: 1
+      });
+      pieceId++;
+    }
+  }
+
+  return { grid: fineGrid, pieces };
+}
+
 /** Pick the smallest key from a set (scan-order). */
-function firstFromSet(set, gridSize) {
+function firstFromSet(set) {
   let min = Infinity;
   for (const k of set) {
     if (k < min) min = k;
@@ -95,14 +213,34 @@ function firstFromSet(set, gridSize) {
 
 /**
  * Create a random tetris-mode individual.
+ * @param {Array} palette - colour palette
+ * @param {number} gridSize - base grid divisions
+ * @param {number} tetrisDivisions - nesting depth (1 = flat, 2+ = nested)
  */
-export function createRandomTetris(palette, gridSize) {
+export function createRandomTetris(palette, gridSize, tetrisDivisions = 1) {
+  if (tetrisDivisions > 1) {
+    const fineSize = gridSize * tetrisDivisions;
+    const { grid, pieces } = generateNestedTiling(gridSize, palette.length, tetrisDivisions);
+    return {
+      mode: 'tetris',
+      grid,
+      pieces,
+      gridSize: fineSize,
+      tetrisDivisions,
+      baseGridSize: gridSize,
+      fitness: null,
+      scores: null
+    };
+  }
+
   const { grid, pieces } = generateTiling(gridSize, palette.length);
   return {
     mode: 'tetris',
     grid,
     pieces,
     gridSize,
+    tetrisDivisions: 1,
+    baseGridSize: gridSize,
     fitness: null,
     scores: null
   };
@@ -118,9 +256,12 @@ export function cloneTetrisIndividual(ind) {
     pieces: ind.pieces.map(p => ({
       id: p.id,
       cells: p.cells.map(c => ({ ...c })),
-      colourIndex: p.colourIndex
+      colourIndex: p.colourIndex,
+      depth: p.depth || 0
     })),
     gridSize: ind.gridSize,
+    tetrisDivisions: ind.tetrisDivisions || 1,
+    baseGridSize: ind.baseGridSize || ind.gridSize,
     fitness: ind.fitness,
     scores: ind.scores ? { ...ind.scores } : null
   };
