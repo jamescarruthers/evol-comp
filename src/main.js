@@ -7,6 +7,19 @@ import { renderBest, renderGrid, renderChart, renderScoreBreakdown } from './ren
 import { renderIndividual } from './renderer/canvas.js';
 import { createRandom } from './genome/representation.js';
 
+// ---- Aspect Ratio Presets ----
+const ASPECT_PRESETS = {
+  '1:1':     { w: 1,    h: 1,   canvasW: 400, canvasH: 400 },
+  '4:3':     { w: 4,    h: 3,   canvasW: 480, canvasH: 360 },
+  '3:2':     { w: 3,    h: 2,   canvasW: 510, canvasH: 340 },
+  '16:9':    { w: 16,   h: 9,   canvasW: 560, canvasH: 315 },
+  '21:9':    { w: 21,   h: 9,   canvasW: 630, canvasH: 270 },
+  '2.39:1':  { w: 2.39, h: 1,   canvasW: 600, canvasH: 251 },
+  '3:1':     { w: 3,    h: 1,   canvasW: 660, canvasH: 220 },
+  '3:4':     { w: 3,    h: 4,   canvasW: 360, canvasH: 480 },
+  '2:3':     { w: 2,    h: 3,   canvasW: 340, canvasH: 510 }
+};
+
 // ---- State ----
 let palette = [];
 let engine = null;
@@ -19,6 +32,8 @@ let bgColour = '#f5f5f0';
 let gridEnabled = false;
 let gridDivisions = 8;
 let tetrisMode = false;
+let tetrisDivisions = 1;
+let currentAspect = '1:1';
 
 // ---- DOM References ----
 const bestCanvas = document.getElementById('best-canvas');
@@ -40,6 +55,10 @@ const gridToggle = document.getElementById('grid-toggle');
 const gridDivisionsSlider = document.getElementById('grid-divisions');
 const gridDivisionsVal = document.getElementById('val-grid-divisions');
 const tetrisToggle = document.getElementById('tetris-toggle');
+const tetrisDivisionsSlider = document.getElementById('tetris-divisions');
+const tetrisDivisionsVal = document.getElementById('val-tetris-divisions');
+const tetrisDivisionsRow = document.getElementById('tetris-divisions-row');
+const aspectRatioSelect = document.getElementById('aspect-ratio');
 
 /** Current effective grid divisions (0 if disabled). */
 function effectiveGrid() {
@@ -52,7 +71,7 @@ function refreshPalette() {
   renderPaletteSwatches();
 
   // Show a random composition preview
-  const preview = createRandom(palette, effectiveGrid(), tetrisMode);
+  const preview = createRandom(palette, effectiveGrid(), tetrisMode, tetrisDivisions);
   renderBest(preview, palette, bestCanvas, bgColour);
 
   // If engine is running, update its palette
@@ -128,6 +147,9 @@ gridDivisionsSlider.addEventListener('input', () => {
 tetrisToggle.addEventListener('change', () => {
   tetrisMode = tetrisToggle.checked;
 
+  // Show/hide tetris divisions slider
+  tetrisDivisionsRow.style.display = tetrisMode ? 'flex' : 'none';
+
   // Tetris mode requires a grid — auto-enable if needed
   if (tetrisMode && !gridEnabled) {
     gridEnabled = true;
@@ -141,14 +163,61 @@ tetrisToggle.addEventListener('change', () => {
   }
 
   // Show a preview with the new mode
-  const preview = createRandom(palette, effectiveGrid(), tetrisMode);
+  const preview = createRandom(palette, effectiveGrid(), tetrisMode, tetrisDivisions);
   renderBest(preview, palette, bestCanvas, bgColour);
+});
+
+// ---- Tetris Shape Divisions ----
+tetrisDivisionsSlider.addEventListener('input', () => {
+  tetrisDivisions = parseInt(tetrisDivisionsSlider.value, 10);
+  tetrisDivisionsVal.textContent = tetrisDivisions.toString();
+
+  if (engine) {
+    engine.setTetrisDivisions(tetrisDivisions);
+    resetEvolution();
+  }
+
+  // Show a preview
+  if (tetrisMode) {
+    const preview = createRandom(palette, effectiveGrid(), tetrisMode, tetrisDivisions);
+    renderBest(preview, palette, bestCanvas, bgColour);
+  }
+});
+
+// ---- Canvas Aspect Ratio ----
+function applyAspectRatio(key) {
+  const preset = ASPECT_PRESETS[key];
+  if (!preset) return;
+  currentAspect = key;
+
+  // Update canvas internal dimensions
+  bestCanvas.width = preset.canvasW;
+  bestCanvas.height = preset.canvasH;
+
+  // Update CSS display size
+  bestCanvas.style.width = preset.canvasW + 'px';
+  bestCanvas.style.height = preset.canvasH + 'px';
+
+  // Update main grid layout for the new canvas width
+  document.querySelector('main').style.gridTemplateColumns = preset.canvasW + 'px 1fr';
+
+  // Reset and re-render
+  if (engine) {
+    resetEvolution();
+  } else {
+    const preview = createRandom(palette, effectiveGrid(), tetrisMode, tetrisDivisions);
+    renderBest(preview, palette, bestCanvas, bgColour);
+  }
+}
+
+aspectRatioSelect.addEventListener('change', () => {
+  applyAspectRatio(aspectRatioSelect.value);
 });
 
 // ---- Evolution Control ----
 function startEvolution() {
   if (!engine) {
-    engine = new EvolutionEngine(palette, params, weights, effectiveGrid(), bgColour, tetrisMode);
+    engine = new EvolutionEngine(palette, params, weights, effectiveGrid(), bgColour, tetrisMode, tetrisDivisions);
     engine.init();
   }
   running = true;
@@ -184,7 +253,7 @@ function resetEvolution() {
   btnExport.disabled = true;
 
   // Show random preview
-  const preview = createRandom(palette, effectiveGrid(), tetrisMode);
+  const preview = createRandom(palette, effectiveGrid(), tetrisMode, tetrisDivisions);
   renderBest(preview, palette, bestCanvas, bgColour);
 
   // Clear chart
@@ -199,12 +268,17 @@ function exportPNG() {
   const best = selectedIndividual || engine.getBest();
   if (!best) return;
 
-  // Render at high resolution
+  // Render at high resolution, preserving aspect ratio
+  const preset = ASPECT_PRESETS[currentAspect];
+  const scale = 4; // 4× the display resolution
+  const exportW = preset.canvasW * scale;
+  const exportH = preset.canvasH * scale;
+
   const exportCanvas = document.createElement('canvas');
-  exportCanvas.width = 1600;
-  exportCanvas.height = 1600;
+  exportCanvas.width = exportW;
+  exportCanvas.height = exportH;
   const ctx = exportCanvas.getContext('2d');
-  renderIndividual(ctx, best, palette, 1600, 1600, bgColour);
+  renderIndividual(ctx, best, palette, exportW, exportH, bgColour);
 
   const link = document.createElement('a');
   link.download = `composition-gen${engine.generation}.png`;
@@ -239,7 +313,10 @@ function tick() {
 
   // Render population grid every few generations
   if (engine.generation % 3 === 0) {
-    renderGrid(engine.getTopN(20), palette, populationGrid, 80, bgColour);
+    const preset = ASPECT_PRESETS[currentAspect];
+    const thumbW = 80;
+    const thumbH = Math.round(80 * (preset.canvasH / preset.canvasW));
+    renderGrid(engine.getTopN(20), palette, populationGrid, thumbW, bgColour, thumbH);
 
     // Re-attach click handlers
     populationGrid.querySelectorAll('canvas').forEach((thumb, idx) => {
@@ -269,7 +346,7 @@ function tick() {
 }
 
 // ---- Weight Sliders ----
-const weightKeys = ['thirds', 'balance', 'symmetry', 'overlap', 'colour', 'variety', 'edge'];
+const weightKeys = ['thirds', 'balance', 'symmetry', 'overlap', 'colour', 'variety', 'edge', 'detail'];
 for (const key of weightKeys) {
   const slider = document.getElementById(`weight-${key}`);
   const valSpan = document.getElementById(`val-${key}`);
@@ -314,7 +391,7 @@ for (const [sliderId, config] of Object.entries(paramMap)) {
 
 // ---- Keyboard Shortcuts ----
 document.addEventListener('keydown', (e) => {
-  if (e.target.tagName === 'INPUT') return; // Don't capture when typing in inputs
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
 
   switch (e.code) {
     case 'Space':

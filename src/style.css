@@ -162,6 +162,21 @@ header h1 {
   min-width: auto;
 }
 
+.setting-row select {
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.setting-row select:focus {
+  border-color: var(--accent);
+  outline: none;
+}
+
 /* Main Layout */
 main {
   display: grid;
@@ -189,6 +204,7 @@ main {
   border: 1px solid var(--border);
   border-radius: 4px;
   background: #f5f5f0;
+  max-width: 100%;
 }
 
 #best-scores {
@@ -242,7 +258,6 @@ main {
 
 .grid-thumb {
   width: 100%;
-  aspect-ratio: 1;
   border: 1px solid var(--border);
   border-radius: 3px;
   cursor: pointer;
