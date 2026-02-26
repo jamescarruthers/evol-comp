@@ -35,6 +35,7 @@ let tetrisMode = false;
 let tetrisDivisions = 1;
 let currentAspect = '1:1';
 let mutationToggles = { colour: true, size: true, position: true };
+let generationInFlight = false; // true while async generation is computing
 
 // ---- DOM References ----
 const bestCanvas = document.getElementById('best-canvas');
@@ -90,7 +91,11 @@ function refreshPalette() {
 
   // If engine is running, update its palette
   if (engine) {
-    engine.setPalette(palette);
+    if (engine._useWorkers) {
+      engine.setPaletteAsync(palette);
+    } else {
+      engine.setPalette(palette);
+    }
   }
 }
 
@@ -127,7 +132,11 @@ bgColourInput.addEventListener('input', () => {
   bestCanvas.style.background = bgColour;
 
   if (engine) {
-    engine.setBgColour(bgColour);
+    if (engine._useWorkers) {
+      engine.setBgColourAsync(bgColour);
+    } else {
+      engine.setBgColour(bgColour);
+    }
   }
 
   // Re-render preview
@@ -243,12 +252,16 @@ aspectRatioSelect.addEventListener('change', () => {
 });
 
 // ---- Evolution Control ----
-function startEvolution() {
+async function startEvolution() {
   if (!engine) {
     engine = new EvolutionEngine(palette, params, weights, effectiveGrid(), bgColour, tetrisMode, tetrisDivisions, effectiveAspect(), mutationToggles);
-    engine.init();
+    engine.enableWorkers();
+    btnStart.textContent = 'Initialising...';
+    btnStart.disabled = true;
+    await engine.initAsync();
   }
   running = true;
+  generationInFlight = false;
   btnStart.textContent = 'Running...';
   btnStart.disabled = true;
   btnPause.disabled = false;
@@ -266,6 +279,10 @@ function pauseEvolution() {
 
 function resetEvolution() {
   running = false;
+  generationInFlight = false;
+  if (engine) {
+    engine.disableWorkers();
+  }
   engine = null;
   selectedIndividual = null;
   genCounter.textContent = '0';
@@ -321,22 +338,11 @@ btnPause.addEventListener('click', pauseEvolution);
 btnReset.addEventListener('click', resetEvolution);
 btnExport.addEventListener('click', exportPNG);
 
-// ---- Animation Loop ----
-function tick() {
-  if (!running || !engine) return;
+// ---- Display Update (shared by both sync and async paths) ----
+function updateDisplay() {
+  if (!engine) return;
 
-  // Run multiple generations per frame if fast enough
-  const frameStart = performance.now();
-  let gensThisFrame = 0;
-  while (performance.now() - frameStart < 12 && gensThisFrame < 5) {
-    engine.evolveOneGeneration();
-    gensThisFrame++;
-  }
-
-  // Update display
   const best = engine.getBest();
-
-  // Render best (or selected) individual
   const displayInd = selectedIndividual || best;
   renderBest(displayInd, palette, bestCanvas, bgColour);
   renderScoreBreakdown(bestScores, displayInd?.scores, weights);
@@ -348,7 +354,6 @@ function tick() {
     const thumbH = Math.round(80 * (preset.canvasH / preset.canvasW));
     renderGrid(engine.getTopN(20), palette, populationGrid, thumbW, bgColour, thumbH);
 
-    // Re-attach click handlers
     populationGrid.querySelectorAll('canvas').forEach((thumb, idx) => {
       thumb.onclick = () => {
         populationGrid.querySelectorAll('canvas').forEach(t => t.classList.remove('selected'));
@@ -363,21 +368,39 @@ function tick() {
     });
   }
 
-  // Render chart
   renderChart(chartCanvas, engine.history);
 
-  // Update stats
   genCounter.textContent = engine.generation;
   fitnessDisplay.textContent = engine.getBestFitness().toFixed(3);
   avgDisplay.textContent = engine.getAvgFitness().toFixed(3);
   mutationDisplay.textContent = engine.currentMutationRate.toFixed(2);
 
-  // Stagnation indicator
   const tier = engine.stagnationTier || 0;
   stagnationIndicator.textContent = STAGNATION_LABELS[tier];
   stagnationIndicator.className = STAGNATION_CLASSES[tier];
+}
 
-  requestAnimationFrame(tick);
+// ---- Animation Loop ----
+// With web workers: dispatch one async generation, render when it completes,
+// then yield a frame to the browser before starting the next generation.
+// The fitness evaluation runs off the main thread so the UI stays responsive.
+function tick() {
+  if (!running || !engine) return;
+
+  if (!generationInFlight) {
+    generationInFlight = true;
+
+    engine.evolveOneGenerationAsync().then(() => {
+      generationInFlight = false;
+
+      if (!running || !engine) return;
+      updateDisplay();
+      requestAnimationFrame(tick);
+    });
+  } else {
+    // Generation still computing — keep the loop alive
+    requestAnimationFrame(tick);
+  }
 }
 
 // ---- Weight Sliders ----
@@ -390,7 +413,11 @@ for (const key of weightKeys) {
       weights[key] = parseFloat(slider.value);
       valSpan.textContent = parseFloat(slider.value).toFixed(2);
       if (engine) {
-        engine.setWeights(weights);
+        if (engine._useWorkers) {
+          engine.setWeightsAsync(weights);
+        } else {
+          engine.setWeights(weights);
+        }
       }
     });
   }

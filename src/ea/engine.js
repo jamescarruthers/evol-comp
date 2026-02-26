@@ -3,6 +3,7 @@
 import { createPopulation, cloneIndividual, createRandom } from '../genome/representation.js';
 import { tournamentSelect, crossover, mutate, DEFAULT_MUTATION_TOGGLES } from '../genome/operators.js';
 import { evaluate, DEFAULT_WEIGHTS } from '../fitness/index.js';
+import { WorkerPool } from '../workers/pool.js';
 
 /** Stagnation tier thresholds (consecutive stagnant generations). */
 const STAGNATION_MILD     = 10;
@@ -40,6 +41,46 @@ export class EvolutionEngine {
     this.currentMutationRate = this.params.mutationRate;
     this.stagnationCount = 0;
     this.stagnationTier = 0; // 0 = none, 1 = mild, 2 = moderate, 3 = severe
+
+    // Worker pool for parallel fitness evaluation
+    this._workerPool = null;
+    this._useWorkers = false;
+  }
+
+  /**
+   * Enable web workers for parallel fitness evaluation.
+   * Call before init() / initAsync().
+   * @param {number} [workerCount] - number of workers (defaults to hardware concurrency)
+   */
+  enableWorkers(workerCount) {
+    if (this._workerPool) this._workerPool.destroy();
+    this._workerPool = new WorkerPool(workerCount);
+    this._workerPool.init();
+    this._useWorkers = true;
+  }
+
+  /**
+   * Disable web workers and fall back to main-thread evaluation.
+   */
+  disableWorkers() {
+    if (this._workerPool) {
+      this._workerPool.destroy();
+      this._workerPool = null;
+    }
+    this._useWorkers = false;
+  }
+
+  /**
+   * Evaluate a batch of individuals — uses workers if enabled, else main thread.
+   */
+  async _evaluateBatch(individuals) {
+    if (this._useWorkers && this._workerPool) {
+      await this._workerPool.evaluateBatch(individuals, this.palette, this.weights, this.bgColour, this.aspectRatio);
+    } else {
+      for (const ind of individuals) {
+        evaluate(ind, this.palette, this.weights, this.bgColour, this.aspectRatio);
+      }
+    }
   }
 
   /**
@@ -62,7 +103,23 @@ export class EvolutionEngine {
   }
 
   /**
-   * Run one generation of evolution.
+   * Initialise the population asynchronously (uses workers if enabled).
+   */
+  async initAsync() {
+    this.population = createPopulation(this.params.populationSize, this.palette, this.gridDivisions, this.tetrisMode, this.tetrisDivisions, this.aspectRatio);
+    this.generation = 0;
+    this.history = [];
+    this.currentMutationRate = this.params.mutationRate;
+    this.stagnationCount = 0;
+    this.stagnationTier = 0;
+
+    await this._evaluateBatch(this.population);
+    this.population.sort((a, b) => b.fitness - a.fitness);
+    this._recordHistory();
+  }
+
+  /**
+   * Run one generation of evolution (synchronous, main-thread evaluation).
    */
   evolveOneGeneration() {
     const { populationSize, offspringPerGen, tournamentSize, crossoverRate, elitismCount } = this.params;
@@ -103,6 +160,55 @@ export class EvolutionEngine {
 
     this._recordHistory();
     this._handleStagnation();
+  }
+
+  /**
+   * Run one generation of evolution asynchronously.
+   * Selection, crossover, and mutation run on the main thread (fast),
+   * then fitness evaluation is batched to web workers in parallel.
+   */
+  async evolveOneGenerationAsync() {
+    const { populationSize, tournamentSize, crossoverRate, elitismCount } = this.params;
+
+    // Sort by fitness
+    this.population.sort((a, b) => b.fitness - a.fitness);
+
+    const nextGen = [];
+
+    // Elitism: keep top individuals unchanged
+    for (let i = 0; i < Math.min(elitismCount, this.population.length); i++) {
+      nextGen.push(cloneIndividual(this.population[i]));
+    }
+
+    // Generate all offspring on the main thread (selection + crossover + mutation)
+    const offspring = [];
+    while (nextGen.length + offspring.length < populationSize) {
+      const parentA = tournamentSelect(this.population, tournamentSize);
+      const parentB = tournamentSelect(this.population, tournamentSize);
+
+      let child;
+      if (Math.random() < crossoverRate) {
+        child = crossover(parentA, parentB, this.palette.length, this.gridDivisions, this.aspectRatio);
+      } else {
+        child = cloneIndividual(parentA.fitness >= parentB.fitness ? parentA : parentB);
+        child.fitness = null;
+        child.scores = null;
+      }
+
+      mutate(child, this.currentMutationRate, this.palette.length, this.gridDivisions, this.aspectRatio, this.mutationToggles);
+      offspring.push(child);
+    }
+
+    // Batch evaluate all offspring in parallel via workers
+    await this._evaluateBatch(offspring);
+
+    nextGen.push(...offspring);
+    this.population = nextGen;
+    this.population.sort((a, b) => b.fitness - a.fitness);
+    this.generation++;
+
+    this._recordHistory();
+    await this._handleStagnationAsync();
   }
 
   /**
@@ -148,6 +254,40 @@ export class EvolutionEngine {
   }
 
   /**
+   * Async version of stagnation handling — uses worker pool for evaluation.
+   */
+  async _handleStagnationAsync() {
+    const lookback = 10;
+    if (this.history.length < lookback + 1) return;
+
+    const recent = this.history.slice(-lookback);
+    const improvement = recent[recent.length - 1].best - recent[0].best;
+    const diversityLow = this._isDiversityLow();
+
+    if (improvement < 0.001 || diversityLow) {
+      this.stagnationCount++;
+    } else if (improvement > 0.01) {
+      this.stagnationCount = Math.max(0, this.stagnationCount - 3);
+      this.currentMutationRate = Math.max(0.1, this.currentMutationRate * 0.9);
+    } else {
+      this.stagnationCount = Math.max(0, this.stagnationCount - 1);
+    }
+
+    if (this.stagnationCount >= STAGNATION_SEVERE) {
+      this.stagnationTier = 3;
+      await this._cataclysmAsync();
+    } else if (this.stagnationCount >= STAGNATION_MODERATE) {
+      this.stagnationTier = 2;
+      await this._aggressiveInterventionAsync();
+    } else if (this.stagnationCount >= STAGNATION_MILD) {
+      this.stagnationTier = 1;
+      await this._mildInterventionAsync();
+    } else {
+      this.stagnationTier = 0;
+    }
+  }
+
+  /**
    * Check whether the population has converged (low fitness diversity).
    */
   _isDiversityLow() {
@@ -172,6 +312,21 @@ export class EvolutionEngine {
         evaluate(this.population[idx], this.palette, this.weights, this.bgColour, this.aspectRatio);
       }
     }
+  }
+
+  async _mildInterventionAsync() {
+    this.currentMutationRate = Math.min(0.6, this.currentMutationRate * 1.2);
+
+    const immigrationCount = Math.floor(this.params.populationSize * 0.1);
+    const toEvaluate = [];
+    for (let i = 0; i < immigrationCount; i++) {
+      const idx = this.population.length - 1 - i;
+      if (idx >= this.params.elitismCount) {
+        this.population[idx] = createRandom(this.palette, this.gridDivisions, this.tetrisMode, this.tetrisDivisions, this.aspectRatio);
+        toEvaluate.push(this.population[idx]);
+      }
+    }
+    await this._evaluateBatch(toEvaluate);
   }
 
   /**
@@ -200,6 +355,30 @@ export class EvolutionEngine {
     }
   }
 
+  async _aggressiveInterventionAsync() {
+    this.currentMutationRate = Math.min(0.8, this.currentMutationRate * 1.5);
+
+    const immigrationCount = Math.floor(this.params.populationSize * 0.25);
+    const toEvaluate = [];
+
+    for (let i = 0; i < immigrationCount; i++) {
+      const idx = this.population.length - 1 - i;
+      if (idx >= this.params.elitismCount) {
+        this.population[idx] = createRandom(this.palette, this.gridDivisions, this.tetrisMode, this.tetrisDivisions, this.aspectRatio);
+        toEvaluate.push(this.population[idx]);
+      }
+    }
+
+    const midStart = this.params.elitismCount;
+    const midEnd = this.population.length - immigrationCount;
+    for (let i = midStart; i < midEnd; i++) {
+      mutate(this.population[i], 0.9, this.palette.length, this.gridDivisions, this.aspectRatio, this.mutationToggles);
+      toEvaluate.push(this.population[i]);
+    }
+
+    await this._evaluateBatch(toEvaluate);
+  }
+
   /**
    * Tier 3 — cataclysm: preserve only the elite few, replace the entire rest
    * of the population with fresh random individuals, and reset stagnation.
@@ -218,6 +397,22 @@ export class EvolutionEngine {
     // Reset stagnation so the cycle can begin afresh
     this.stagnationCount = 0;
 
+    this.population.sort((a, b) => b.fitness - a.fitness);
+  }
+
+  async _cataclysmAsync() {
+    const keepCount = Math.max(this.params.elitismCount, 2);
+    const toEvaluate = [];
+
+    for (let i = keepCount; i < this.population.length; i++) {
+      this.population[i] = createRandom(this.palette, this.gridDivisions, this.tetrisMode, this.tetrisDivisions, this.aspectRatio);
+      toEvaluate.push(this.population[i]);
+    }
+
+    await this._evaluateBatch(toEvaluate);
+
+    this.currentMutationRate = Math.min(0.5, this.baseMutationRate * 1.5);
+    this.stagnationCount = 0;
     this.population.sort((a, b) => b.fitness - a.fitness);
   }
 
@@ -264,6 +459,12 @@ export class EvolutionEngine {
     this.population.sort((a, b) => b.fitness - a.fitness);
   }
 
+  async setWeightsAsync(weights) {
+    this.weights = { ...weights };
+    await this._evaluateBatch(this.population);
+    this.population.sort((a, b) => b.fitness - a.fitness);
+  }
+
   /**
    * Update palette (re-renders but genome stays the same).
    */
@@ -276,6 +477,12 @@ export class EvolutionEngine {
     this.population.sort((a, b) => b.fitness - a.fitness);
   }
 
+  async setPaletteAsync(palette) {
+    this.palette = palette;
+    await this._evaluateBatch(this.population);
+    this.population.sort((a, b) => b.fitness - a.fitness);
+  }
+
   /**
    * Update background colour and re-evaluate population.
    */
@@ -284,6 +491,12 @@ export class EvolutionEngine {
     for (const ind of this.population) {
       evaluate(ind, this.palette, this.weights, this.bgColour, this.aspectRatio);
     }
+    this.population.sort((a, b) => b.fitness - a.fitness);
+  }
+
+  async setBgColourAsync(bgColour) {
+    this.bgColour = bgColour;
+    await this._evaluateBatch(this.population);
     this.population.sort((a, b) => b.fitness - a.fitness);
   }
 
