@@ -20,20 +20,15 @@ export function renderIndividual(ctx, individual, palette, width, height, bgColo
   ctx.fillStyle = bgColour;
   ctx.fillRect(0, 0, width, height);
 
-  // Uniform scaling — keep shapes square, centre within canvas
-  const size = Math.min(width, height);
-  const offsetX = (width - size) / 2;
-  const offsetY = (height - size) / 2;
-
   // Sort by z-order (lower z draws first / further back)
   const sorted = [...individual.rectangles].sort((a, b) => a.z - b.z);
 
   for (const rect of sorted) {
     const colour = palette[rect.colourIndex % palette.length];
-    const px = offsetX + rect.x * size;
-    const py = offsetY + rect.y * size;
-    const pw = rect.w * size;
-    const ph = rect.h * size;
+    const px = rect.x * width;
+    const py = rect.y * height;
+    const pw = rect.w * width;
+    const ph = rect.h * height;
 
     ctx.fillStyle = `rgb(${colour.rgb[0]}, ${colour.rgb[1]}, ${colour.rgb[2]})`;
     ctx.fillRect(px - pw / 2, py - ph / 2, pw, ph);
