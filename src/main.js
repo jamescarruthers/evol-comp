@@ -18,6 +18,7 @@ let params = { ...DEFAULT_PARAMS };
 let bgColour = '#f5f5f0';
 let gridEnabled = false;
 let gridDivisions = 8;
+let tetrisMode = false;
 
 // ---- DOM References ----
 const bestCanvas = document.getElementById('best-canvas');
@@ -38,6 +39,7 @@ const bgColourVal = document.getElementById('val-bg-colour');
 const gridToggle = document.getElementById('grid-toggle');
 const gridDivisionsSlider = document.getElementById('grid-divisions');
 const gridDivisionsVal = document.getElementById('val-grid-divisions');
+const tetrisToggle = document.getElementById('tetris-toggle');
 
 /** Current effective grid divisions (0 if disabled). */
 function effectiveGrid() {
@@ -50,7 +52,7 @@ function refreshPalette() {
   renderPaletteSwatches();
 
   // Show a random composition preview
-  const preview = createRandom(palette, effectiveGrid());
+  const preview = createRandom(palette, effectiveGrid(), tetrisMode);
   renderBest(preview, palette, bestCanvas, bgColour);
 
   // If engine is running, update its palette
@@ -122,10 +124,31 @@ gridDivisionsSlider.addEventListener('input', () => {
   }
 });
 
+// ---- Tetris Mode ----
+tetrisToggle.addEventListener('change', () => {
+  tetrisMode = tetrisToggle.checked;
+
+  // Tetris mode requires a grid — auto-enable if needed
+  if (tetrisMode && !gridEnabled) {
+    gridEnabled = true;
+    gridToggle.checked = true;
+    gridDivisionsSlider.disabled = false;
+  }
+
+  // Reset the engine so the population is rebuilt with the new mode
+  if (engine) {
+    resetEvolution();
+  }
+
+  // Show a preview with the new mode
+  const preview = createRandom(palette, effectiveGrid(), tetrisMode);
+  renderBest(preview, palette, bestCanvas, bgColour);
+});
+
 // ---- Evolution Control ----
 function startEvolution() {
   if (!engine) {
-    engine = new EvolutionEngine(palette, params, weights, effectiveGrid(), bgColour);
+    engine = new EvolutionEngine(palette, params, weights, effectiveGrid(), bgColour, tetrisMode);
     engine.init();
   }
   running = true;
@@ -161,7 +184,7 @@ function resetEvolution() {
   btnExport.disabled = true;
 
   // Show random preview
-  const preview = createRandom(palette, effectiveGrid());
+  const preview = createRandom(palette, effectiveGrid(), tetrisMode);
   renderBest(preview, palette, bestCanvas, bgColour);
 
   // Clear chart
@@ -310,6 +333,10 @@ document.addEventListener('keydown', (e) => {
       break;
     case 'KeyE':
       exportPNG();
+      break;
+    case 'KeyT':
+      tetrisToggle.checked = !tetrisToggle.checked;
+      tetrisToggle.dispatchEvent(new Event('change'));
       break;
     case 'Escape':
       // Deselect individual, show best

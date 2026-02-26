@@ -7,6 +7,7 @@ import { scoreOverlap } from './overlap.js';
 import { scoreColour } from './colour.js';
 import { scoreVariety } from './variety.js';
 import { scoreEdgePenalty } from './edge.js';
+import { tetrisToRects } from '../genome/tetris.js';
 
 export const DEFAULT_WEIGHTS = {
   thirds: 0.20,
@@ -20,6 +21,7 @@ export const DEFAULT_WEIGHTS = {
 
 /**
  * Evaluate an individual's composite fitness.
+ * For tetris-mode individuals, converts pieces to pseudo-rectangles first.
  * @param {Object} individual
  * @param {Array} palette - colour palette
  * @param {Object} weights - weight per fitness component
@@ -27,14 +29,20 @@ export const DEFAULT_WEIGHTS = {
  * @returns {number} fitness score 0–1
  */
 export function evaluate(individual, palette, weights = DEFAULT_WEIGHTS, bgColour = '#f5f5f0') {
+  // For tetris individuals, create a proxy with pseudo-rectangles for fitness
+  let proxy = individual;
+  if (individual.mode === 'tetris') {
+    proxy = { rectangles: tetrisToRects(individual) };
+  }
+
   const scores = {
-    thirds: scoreThirds(individual),
-    balance: scoreBalance(individual, palette),
-    symmetry: scoreSymmetry(individual),
-    overlap: scoreOverlap(individual),
-    colour: scoreColour(individual, palette, bgColour),
-    variety: scoreVariety(individual),
-    edge: scoreEdgePenalty(individual)
+    thirds: scoreThirds(proxy),
+    balance: scoreBalance(proxy, palette),
+    symmetry: scoreSymmetry(proxy),
+    overlap: scoreOverlap(proxy),
+    colour: scoreColour(proxy, palette, bgColour),
+    variety: scoreVariety(proxy),
+    edge: scoreEdgePenalty(proxy)
   };
 
   let fitness = 0;

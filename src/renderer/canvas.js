@@ -2,6 +2,7 @@
 
 /**
  * Render an individual to a canvas context.
+ * Dispatches to the appropriate renderer based on individual mode.
  * @param {CanvasRenderingContext2D} ctx
  * @param {Object} individual
  * @param {Array} palette - array of {rgb: [r,g,b]}
@@ -10,6 +11,11 @@
  * @param {string} bgColour - CSS colour string for the background
  */
 export function renderIndividual(ctx, individual, palette, width, height, bgColour = '#f5f5f0') {
+  if (individual.mode === 'tetris') {
+    renderTetrisIndividual(ctx, individual, palette, width, height, bgColour);
+    return;
+  }
+
   // Background
   ctx.fillStyle = bgColour;
   ctx.fillRect(0, 0, width, height);
@@ -26,5 +32,52 @@ export function renderIndividual(ctx, individual, palette, width, height, bgColo
 
     ctx.fillStyle = `rgb(${colour.rgb[0]}, ${colour.rgb[1]}, ${colour.rgb[2]})`;
     ctx.fillRect(px - pw / 2, py - ph / 2, pw, ph);
+  }
+}
+
+/**
+ * Render a tetris-tiled individual.
+ * Each cell is drawn as a coloured square; cells of the same piece share
+ * colour with no gap between them, while a thin gap separates different
+ * pieces to show the interlocking structure.
+ */
+function renderTetrisIndividual(ctx, individual, palette, width, height, bgColour) {
+  const { grid, pieces, gridSize } = individual;
+  const cellW = width / gridSize;
+  const cellH = height / gridSize;
+  // Scale gap with canvas size so it looks good at all resolutions
+  const gap = Math.max(1, Math.round(Math.min(cellW, cellH) * 0.06));
+
+  // Background
+  ctx.fillStyle = bgColour;
+  ctx.fillRect(0, 0, width, height);
+
+  for (let r = 0; r < gridSize; r++) {
+    for (let c = 0; c < gridSize; c++) {
+      const pieceId = grid[r][c];
+      if (pieceId < 0) continue;
+
+      const piece = pieces.find(p => p.id === pieceId);
+      if (!piece) continue;
+
+      const colour = palette[piece.colourIndex % palette.length];
+      ctx.fillStyle = `rgb(${colour.rgb[0]}, ${colour.rgb[1]}, ${colour.rgb[2]})`;
+
+      const x = c * cellW;
+      const y = r * cellH;
+
+      // Determine which edges border a different piece (or the canvas edge)
+      const gapTop = (r === 0 || grid[r - 1][c] !== pieceId) ? gap : 0;
+      const gapLeft = (c === 0 || grid[r][c - 1] !== pieceId) ? gap : 0;
+      const gapBottom = (r === gridSize - 1 || grid[r + 1][c] !== pieceId) ? gap : 0;
+      const gapRight = (c === gridSize - 1 || grid[r][c + 1] !== pieceId) ? gap : 0;
+
+      ctx.fillRect(
+        x + gapLeft,
+        y + gapTop,
+        cellW - gapLeft - gapRight,
+        cellH - gapTop - gapBottom
+      );
+    }
   }
 }

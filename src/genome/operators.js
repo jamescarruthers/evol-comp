@@ -1,6 +1,7 @@
 // genome/operators.js — Crossover, mutation, selection operators
 
 import { RECT_COUNT_MIN, RECT_COUNT_MAX, cloneIndividual, snapToGrid } from './representation.js';
+import { crossoverTetris, mutateTetris } from './tetris.js';
 
 /**
  * Gaussian random with mean 0 and given standard deviation.
@@ -88,9 +89,15 @@ export function spatialCrossover(parentA, parentB, paletteLength) {
 
 /**
  * Perform crossover using a randomly chosen method.
+ * Dispatches to tetris crossover if parents are tetris-mode individuals.
  * @param {number} gridDivisions - grid divisions for snapping (0 = disabled)
  */
 export function crossover(parentA, parentB, paletteLength, gridDivisions = 0) {
+  // Tetris mode dispatch
+  if (parentA.mode === 'tetris' && parentB.mode === 'tetris') {
+    return crossoverTetris(parentA, parentB, paletteLength, parentA.gridSize);
+  }
+
   let offspring;
   if (Math.random() < 0.5) {
     offspring = uniformCrossover(parentA, parentB, paletteLength);
@@ -110,12 +117,18 @@ export function crossover(parentA, parentB, paletteLength, gridDivisions = 0) {
 
 /**
  * Mutate an individual in-place.
+ * Dispatches to tetris mutation if individual is tetris-mode.
  * @param {Object} individual
  * @param {number} mutationRate - probability of mutating each rectangle
  * @param {number} paletteLength - number of colours in palette
  * @param {number} gridDivisions - grid divisions for snapping (0 = disabled)
  */
 export function mutate(individual, mutationRate, paletteLength, gridDivisions = 0) {
+  if (individual.mode === 'tetris') {
+    mutateTetris(individual, mutationRate, paletteLength);
+    return;
+  }
+
   const rects = individual.rectangles;
 
   for (let i = 0; i < rects.length; i++) {
