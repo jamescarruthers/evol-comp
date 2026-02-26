@@ -170,7 +170,8 @@ export function renderScoreBreakdown(container, scores, weights) {
     variety: 'Size Variety',
     edge: 'Edge Penalty',
     detail: 'Detail Dist.',
-    clumping: 'Colour Clumping'
+    clumping: 'Colour Clumping',
+    detailClumping: 'Detail Clumping'
   };
 
   let html = '';
