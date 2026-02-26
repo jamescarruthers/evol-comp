@@ -381,7 +381,7 @@ function tick() {
 }
 
 // ---- Weight Sliders ----
-const weightKeys = ['thirds', 'balance', 'symmetry', 'overlap', 'colour', 'variety', 'edge', 'detail'];
+const weightKeys = ['thirds', 'balance', 'symmetry', 'overlap', 'colour', 'variety', 'edge', 'detail', 'clumping', 'detailClumping'];
 for (const key of weightKeys) {
   const slider = document.getElementById(`weight-${key}`);
   const valSpan = document.getElementById(`val-${key}`);

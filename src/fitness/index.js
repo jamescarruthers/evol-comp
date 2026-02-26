@@ -8,6 +8,8 @@ import { scoreColour } from './colour.js';
 import { scoreVariety } from './variety.js';
 import { scoreEdgePenalty } from './edge.js';
 import { scoreDetail } from './detail.js';
+import { scoreClumping } from './clumping.js';
+import { scoreDetailClumping } from './detailClumping.js';
 import { tetrisToRects } from '../genome/tetris.js';
 import { computeVisibility } from './visibility.js';
 
@@ -19,7 +21,9 @@ export const DEFAULT_WEIGHTS = {
   colour: 0.15,
   variety: 0.10,
   edge: 0.05,
-  detail: 0.05
+  detail: 0.05,
+  clumping: 0,
+  detailClumping: 0
 };
 
 /**
@@ -51,7 +55,9 @@ export function evaluate(individual, palette, weights = DEFAULT_WEIGHTS, bgColou
     colour: scoreColour(proxy, palette, bgColour, aspectRatio),
     variety: scoreVariety(proxy, aspectRatio),
     edge: scoreEdgePenalty(proxy, aspectRatio),
-    detail: scoreDetail(proxy, aspectRatio)
+    detail: scoreDetail(proxy, aspectRatio),
+    clumping: scoreClumping(proxy, palette, aspectRatio),
+    detailClumping: scoreDetailClumping(proxy, aspectRatio)
   };
 
   let fitness = 0;
