@@ -37,6 +37,8 @@ let tetrisDivisions = 1;
 let squareMode = false;
 let squareDivisions = 1;
 let filterEnabled = false;
+let blurAmount = 0;
+let sharpenAmount = 0;
 let grainAmount = 0.25;
 let vignetteAmount = 0.40;
 let currentAspect = '1:1';
@@ -72,6 +74,12 @@ const squareDivisionsSlider = document.getElementById('square-divisions');
 const squareDivisionsVal = document.getElementById('val-square-divisions');
 const squareDivisionsRow = document.getElementById('square-divisions-row');
 const filterToggle = document.getElementById('filter-toggle');
+const blurSlider = document.getElementById('blur-amount');
+const blurVal = document.getElementById('val-blur-amount');
+const blurRow = document.getElementById('blur-row');
+const sharpenSlider = document.getElementById('sharpen-amount');
+const sharpenVal = document.getElementById('val-sharpen-amount');
+const sharpenRow = document.getElementById('sharpen-row');
 const grainSlider = document.getElementById('grain-amount');
 const grainVal = document.getElementById('val-grain-amount');
 const grainRow = document.getElementById('grain-row');
@@ -241,6 +249,8 @@ function applyFilterToBest() {
   if (!filterEnabled) return;
   const ctx = bestCanvas.getContext('2d');
   applyAnalogueFilter(ctx, bestCanvas.width, bestCanvas.height, {
+    blurAmount,
+    sharpenAmount,
     grainAmount,
     vignetteAmount
   });
@@ -248,8 +258,11 @@ function applyFilterToBest() {
 
 filterToggle.addEventListener('change', () => {
   filterEnabled = filterToggle.checked;
-  grainRow.style.display = filterEnabled ? 'flex' : 'none';
-  vignetteRow.style.display = filterEnabled ? 'flex' : 'none';
+  const show = filterEnabled ? 'flex' : 'none';
+  blurRow.style.display = show;
+  sharpenRow.style.display = show;
+  grainRow.style.display = show;
+  vignetteRow.style.display = show;
 
   // Re-render with filter applied
   const displayInd = selectedIndividual || (engine ? engine.getBest() : null);
@@ -273,6 +286,28 @@ grainSlider.addEventListener('input', () => {
 vignetteSlider.addEventListener('input', () => {
   vignetteAmount = parseFloat(vignetteSlider.value);
   vignetteVal.textContent = vignetteAmount.toFixed(2);
+
+  const displayInd = selectedIndividual || (engine ? engine.getBest() : null);
+  if (displayInd) {
+    renderBest(displayInd, palette, bestCanvas, bgColour);
+    applyFilterToBest();
+  }
+});
+
+blurSlider.addEventListener('input', () => {
+  blurAmount = parseFloat(blurSlider.value);
+  blurVal.textContent = blurAmount.toFixed(2);
+
+  const displayInd = selectedIndividual || (engine ? engine.getBest() : null);
+  if (displayInd) {
+    renderBest(displayInd, palette, bestCanvas, bgColour);
+    applyFilterToBest();
+  }
+});
+
+sharpenSlider.addEventListener('input', () => {
+  sharpenAmount = parseFloat(sharpenSlider.value);
+  sharpenVal.textContent = sharpenAmount.toFixed(2);
 
   const displayInd = selectedIndividual || (engine ? engine.getBest() : null);
   if (displayInd) {
@@ -453,7 +488,7 @@ function exportPNG() {
   const ctx = exportCanvas.getContext('2d');
   renderIndividual(ctx, best, palette, exportW, exportH, bgColour);
   if (filterEnabled) {
-    applyAnalogueFilter(ctx, exportW, exportH, { grainAmount, vignetteAmount });
+    applyAnalogueFilter(ctx, exportW, exportH, { blurAmount, sharpenAmount, grainAmount, vignetteAmount });
   }
 
   const link = document.createElement('a');
