@@ -24,7 +24,7 @@ export const DEFAULT_PARAMS = {
 };
 
 export class EvolutionEngine {
-  constructor(palette, params = {}, weights = null, gridDivisions = 0, bgColour = '#f5f5f0', tetrisMode = false, tetrisDivisions = 1, aspectRatio = 1, mutationToggles = null) {
+  constructor(palette, params = {}, weights = null, gridDivisions = 0, bgColour = '#f5f5f0', tetrisMode = false, tetrisDivisions = 1, aspectRatio = 1, mutationToggles = null, squareMode = false, squareDivisions = 1) {
     this.palette = palette;
     this.params = { ...DEFAULT_PARAMS, ...params };
     this.weights = weights ? { ...weights } : { ...DEFAULT_WEIGHTS };
@@ -32,6 +32,8 @@ export class EvolutionEngine {
     this.bgColour = bgColour;
     this.tetrisMode = tetrisMode;
     this.tetrisDivisions = tetrisDivisions;
+    this.squareMode = squareMode;
+    this.squareDivisions = squareDivisions;
     this.aspectRatio = aspectRatio;
     this.mutationToggles = mutationToggles ? { ...mutationToggles } : { ...DEFAULT_MUTATION_TOGGLES };
     this.population = [];
@@ -87,7 +89,7 @@ export class EvolutionEngine {
    * Initialise the population with random individuals.
    */
   init() {
-    this.population = createPopulation(this.params.populationSize, this.palette, this.gridDivisions, this.tetrisMode, this.tetrisDivisions, this.aspectRatio);
+    this.population = createPopulation(this.params.populationSize, this.palette, this.gridDivisions, this.tetrisMode, this.tetrisDivisions, this.aspectRatio, this.squareMode, this.squareDivisions);
     this.generation = 0;
     this.history = [];
     this.currentMutationRate = this.params.mutationRate;
@@ -106,7 +108,7 @@ export class EvolutionEngine {
    * Initialise the population asynchronously (uses workers if enabled).
    */
   async initAsync() {
-    this.population = createPopulation(this.params.populationSize, this.palette, this.gridDivisions, this.tetrisMode, this.tetrisDivisions, this.aspectRatio);
+    this.population = createPopulation(this.params.populationSize, this.palette, this.gridDivisions, this.tetrisMode, this.tetrisDivisions, this.aspectRatio, this.squareMode, this.squareDivisions);
     this.generation = 0;
     this.history = [];
     this.currentMutationRate = this.params.mutationRate;
@@ -308,7 +310,7 @@ export class EvolutionEngine {
     for (let i = 0; i < immigrationCount; i++) {
       const idx = this.population.length - 1 - i;
       if (idx >= this.params.elitismCount) {
-        this.population[idx] = createRandom(this.palette, this.gridDivisions, this.tetrisMode, this.tetrisDivisions, this.aspectRatio);
+        this.population[idx] = createRandom(this.palette, this.gridDivisions, this.tetrisMode, this.tetrisDivisions, this.aspectRatio, this.squareMode, this.squareDivisions);
         evaluate(this.population[idx], this.palette, this.weights, this.bgColour, this.aspectRatio);
       }
     }
@@ -322,7 +324,7 @@ export class EvolutionEngine {
     for (let i = 0; i < immigrationCount; i++) {
       const idx = this.population.length - 1 - i;
       if (idx >= this.params.elitismCount) {
-        this.population[idx] = createRandom(this.palette, this.gridDivisions, this.tetrisMode, this.tetrisDivisions, this.aspectRatio);
+        this.population[idx] = createRandom(this.palette, this.gridDivisions, this.tetrisMode, this.tetrisDivisions, this.aspectRatio, this.squareMode, this.squareDivisions);
         toEvaluate.push(this.population[idx]);
       }
     }
@@ -341,7 +343,7 @@ export class EvolutionEngine {
     for (let i = 0; i < immigrationCount; i++) {
       const idx = this.population.length - 1 - i;
       if (idx >= this.params.elitismCount) {
-        this.population[idx] = createRandom(this.palette, this.gridDivisions, this.tetrisMode, this.tetrisDivisions, this.aspectRatio);
+        this.population[idx] = createRandom(this.palette, this.gridDivisions, this.tetrisMode, this.tetrisDivisions, this.aspectRatio, this.squareMode, this.squareDivisions);
         evaluate(this.population[idx], this.palette, this.weights, this.bgColour, this.aspectRatio);
       }
     }
@@ -364,7 +366,7 @@ export class EvolutionEngine {
     for (let i = 0; i < immigrationCount; i++) {
       const idx = this.population.length - 1 - i;
       if (idx >= this.params.elitismCount) {
-        this.population[idx] = createRandom(this.palette, this.gridDivisions, this.tetrisMode, this.tetrisDivisions, this.aspectRatio);
+        this.population[idx] = createRandom(this.palette, this.gridDivisions, this.tetrisMode, this.tetrisDivisions, this.aspectRatio, this.squareMode, this.squareDivisions);
         toEvaluate.push(this.population[idx]);
       }
     }
@@ -387,7 +389,7 @@ export class EvolutionEngine {
     const keepCount = Math.max(this.params.elitismCount, 2);
 
     for (let i = keepCount; i < this.population.length; i++) {
-      this.population[i] = createRandom(this.palette, this.gridDivisions, this.tetrisMode, this.tetrisDivisions, this.aspectRatio);
+      this.population[i] = createRandom(this.palette, this.gridDivisions, this.tetrisMode, this.tetrisDivisions, this.aspectRatio, this.squareMode, this.squareDivisions);
       evaluate(this.population[i], this.palette, this.weights, this.bgColour, this.aspectRatio);
     }
 
@@ -405,7 +407,7 @@ export class EvolutionEngine {
     const toEvaluate = [];
 
     for (let i = keepCount; i < this.population.length; i++) {
-      this.population[i] = createRandom(this.palette, this.gridDivisions, this.tetrisMode, this.tetrisDivisions, this.aspectRatio);
+      this.population[i] = createRandom(this.palette, this.gridDivisions, this.tetrisMode, this.tetrisDivisions, this.aspectRatio, this.squareMode, this.squareDivisions);
       toEvaluate.push(this.population[i]);
     }
 
@@ -512,6 +514,13 @@ export class EvolutionEngine {
    */
   setTetrisDivisions(tetrisDivisions) {
     this.tetrisDivisions = tetrisDivisions;
+  }
+
+  /**
+   * Update square nesting divisions.
+   */
+  setSquareDivisions(squareDivisions) {
+    this.squareDivisions = squareDivisions;
   }
 
   /**

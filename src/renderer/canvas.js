@@ -11,7 +11,7 @@
  * @param {string} bgColour - CSS colour string for the background
  */
 export function renderIndividual(ctx, individual, palette, width, height, bgColour = '#f5f5f0') {
-  if (individual.mode === 'tetris') {
+  if (individual.mode === 'tetris' || individual.mode === 'square') {
     renderTetrisIndividual(ctx, individual, palette, width, height, bgColour);
     return;
   }

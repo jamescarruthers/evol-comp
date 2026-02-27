@@ -5,6 +5,7 @@ import { EvolutionEngine, DEFAULT_PARAMS } from './ea/engine.js';
 import { DEFAULT_WEIGHTS } from './fitness/index.js';
 import { renderBest, renderGrid, renderChart, renderScoreBreakdown } from './renderer/display.js';
 import { renderIndividual } from './renderer/canvas.js';
+import { applyAnalogueFilter } from './renderer/filter.js';
 import { createRandom } from './genome/representation.js';
 
 // ---- Aspect Ratio Presets ----
@@ -33,6 +34,11 @@ let gridEnabled = false;
 let gridDivisions = 8;
 let tetrisMode = false;
 let tetrisDivisions = 1;
+let squareMode = false;
+let squareDivisions = 1;
+let filterEnabled = false;
+let grainAmount = 0.25;
+let vignetteAmount = 0.40;
 let currentAspect = '1:1';
 let mutationToggles = { colour: true, size: true, position: true };
 let generationInFlight = false; // true while async generation is computing
@@ -61,6 +67,17 @@ const tetrisToggle = document.getElementById('tetris-toggle');
 const tetrisDivisionsSlider = document.getElementById('tetris-divisions');
 const tetrisDivisionsVal = document.getElementById('val-tetris-divisions');
 const tetrisDivisionsRow = document.getElementById('tetris-divisions-row');
+const squareToggle = document.getElementById('square-toggle');
+const squareDivisionsSlider = document.getElementById('square-divisions');
+const squareDivisionsVal = document.getElementById('val-square-divisions');
+const squareDivisionsRow = document.getElementById('square-divisions-row');
+const filterToggle = document.getElementById('filter-toggle');
+const grainSlider = document.getElementById('grain-amount');
+const grainVal = document.getElementById('val-grain-amount');
+const grainRow = document.getElementById('grain-row');
+const vignetteSlider = document.getElementById('vignette-amount');
+const vignetteVal = document.getElementById('val-vignette-amount');
+const vignetteRow = document.getElementById('vignette-row');
 const aspectRatioSelect = document.getElementById('aspect-ratio');
 const toggleMutateColour = document.getElementById('toggle-mutate-colour');
 const toggleMutateSize = document.getElementById('toggle-mutate-size');
@@ -86,8 +103,9 @@ function refreshPalette() {
   renderPaletteSwatches();
 
   // Show a random composition preview
-  const preview = createRandom(palette, effectiveGrid(), tetrisMode, tetrisDivisions, effectiveAspect());
+  const preview = createRandom(palette, effectiveGrid(), tetrisMode, tetrisDivisions, effectiveAspect(), squareMode, squareDivisions);
   renderBest(preview, palette, bestCanvas, bgColour);
+  applyFilterToBest();
 
   // If engine is running, update its palette
   if (engine) {
@@ -143,6 +161,7 @@ bgColourInput.addEventListener('input', () => {
   const displayInd = selectedIndividual || (engine ? engine.getBest() : null);
   if (displayInd) {
     renderBest(displayInd, palette, bestCanvas, bgColour);
+    applyFilterToBest();
     renderScoreBreakdown(bestScores, displayInd.scores, weights);
   }
 });
@@ -173,6 +192,13 @@ tetrisToggle.addEventListener('change', () => {
   // Show/hide tetris divisions slider
   tetrisDivisionsRow.style.display = tetrisMode ? 'flex' : 'none';
 
+  // Tetris and square are mutually exclusive
+  if (tetrisMode && squareMode) {
+    squareMode = false;
+    squareToggle.checked = false;
+    squareDivisionsRow.style.display = 'none';
+  }
+
   // Tetris mode requires a grid — auto-enable if needed
   if (tetrisMode && !gridEnabled) {
     gridEnabled = true;
@@ -186,8 +212,9 @@ tetrisToggle.addEventListener('change', () => {
   }
 
   // Show a preview with the new mode
-  const preview = createRandom(palette, effectiveGrid(), tetrisMode, tetrisDivisions, effectiveAspect());
+  const preview = createRandom(palette, effectiveGrid(), tetrisMode, tetrisDivisions, effectiveAspect(), squareMode, squareDivisions);
   renderBest(preview, palette, bestCanvas, bgColour);
+  applyFilterToBest();
 });
 
 // ---- Tetris Shape Divisions ----
@@ -202,8 +229,105 @@ tetrisDivisionsSlider.addEventListener('input', () => {
 
   // Show a preview
   if (tetrisMode) {
-    const preview = createRandom(palette, effectiveGrid(), tetrisMode, tetrisDivisions, effectiveAspect());
+    const preview = createRandom(palette, effectiveGrid(), tetrisMode, tetrisDivisions, effectiveAspect(), squareMode, squareDivisions);
     renderBest(preview, palette, bestCanvas, bgColour);
+    applyFilterToBest();
+  }
+});
+
+// ---- Analogue Filter ----
+/** Apply analogue filter to the best-canvas if enabled. */
+function applyFilterToBest() {
+  if (!filterEnabled) return;
+  const ctx = bestCanvas.getContext('2d');
+  applyAnalogueFilter(ctx, bestCanvas.width, bestCanvas.height, {
+    grainAmount,
+    vignetteAmount
+  });
+}
+
+filterToggle.addEventListener('change', () => {
+  filterEnabled = filterToggle.checked;
+  grainRow.style.display = filterEnabled ? 'flex' : 'none';
+  vignetteRow.style.display = filterEnabled ? 'flex' : 'none';
+
+  // Re-render with filter applied
+  const displayInd = selectedIndividual || (engine ? engine.getBest() : null);
+  if (displayInd) {
+    renderBest(displayInd, palette, bestCanvas, bgColour);
+    applyFilterToBest();
+  }
+});
+
+grainSlider.addEventListener('input', () => {
+  grainAmount = parseFloat(grainSlider.value);
+  grainVal.textContent = grainAmount.toFixed(2);
+
+  const displayInd = selectedIndividual || (engine ? engine.getBest() : null);
+  if (displayInd) {
+    renderBest(displayInd, palette, bestCanvas, bgColour);
+    applyFilterToBest();
+  }
+});
+
+vignetteSlider.addEventListener('input', () => {
+  vignetteAmount = parseFloat(vignetteSlider.value);
+  vignetteVal.textContent = vignetteAmount.toFixed(2);
+
+  const displayInd = selectedIndividual || (engine ? engine.getBest() : null);
+  if (displayInd) {
+    renderBest(displayInd, palette, bestCanvas, bgColour);
+    applyFilterToBest();
+  }
+});
+
+// ---- Square Mode ----
+squareToggle.addEventListener('change', () => {
+  squareMode = squareToggle.checked;
+
+  // Show/hide square divisions slider
+  squareDivisionsRow.style.display = squareMode ? 'flex' : 'none';
+
+  // Square mode requires a grid — auto-enable if needed
+  if (squareMode && !gridEnabled) {
+    gridEnabled = true;
+    gridToggle.checked = true;
+    gridDivisionsSlider.disabled = false;
+  }
+
+  // Square and tetris are mutually exclusive
+  if (squareMode && tetrisMode) {
+    tetrisMode = false;
+    tetrisToggle.checked = false;
+    tetrisDivisionsRow.style.display = 'none';
+  }
+
+  // Reset the engine so the population is rebuilt with the new mode
+  if (engine) {
+    resetEvolution();
+  }
+
+  // Show a preview with the new mode
+  const preview = createRandom(palette, effectiveGrid(), tetrisMode, tetrisDivisions, effectiveAspect(), squareMode, squareDivisions);
+  renderBest(preview, palette, bestCanvas, bgColour);
+  applyFilterToBest();
+});
+
+// ---- Square Divisions ----
+squareDivisionsSlider.addEventListener('input', () => {
+  squareDivisions = parseInt(squareDivisionsSlider.value, 10);
+  squareDivisionsVal.textContent = squareDivisions.toString();
+
+  if (engine) {
+    engine.setSquareDivisions(squareDivisions);
+    resetEvolution();
+  }
+
+  // Show a preview
+  if (squareMode) {
+    const preview = createRandom(palette, effectiveGrid(), tetrisMode, tetrisDivisions, effectiveAspect(), squareMode, squareDivisions);
+    renderBest(preview, palette, bestCanvas, bgColour);
+    applyFilterToBest();
   }
 });
 
@@ -242,8 +366,9 @@ function applyAspectRatio(key) {
   if (engine) {
     resetEvolution();
   } else {
-    const preview = createRandom(palette, effectiveGrid(), tetrisMode, tetrisDivisions, effectiveAspect());
+    const preview = createRandom(palette, effectiveGrid(), tetrisMode, tetrisDivisions, effectiveAspect(), squareMode, squareDivisions);
     renderBest(preview, palette, bestCanvas, bgColour);
+    applyFilterToBest();
   }
 }
 
@@ -254,7 +379,7 @@ aspectRatioSelect.addEventListener('change', () => {
 // ---- Evolution Control ----
 async function startEvolution() {
   if (!engine) {
-    engine = new EvolutionEngine(palette, params, weights, effectiveGrid(), bgColour, tetrisMode, tetrisDivisions, effectiveAspect(), mutationToggles);
+    engine = new EvolutionEngine(palette, params, weights, effectiveGrid(), bgColour, tetrisMode, tetrisDivisions, effectiveAspect(), mutationToggles, squareMode, squareDivisions);
     engine.enableWorkers();
     btnStart.textContent = 'Initialising...';
     btnStart.disabled = true;
@@ -300,8 +425,9 @@ function resetEvolution() {
   btnExport.disabled = true;
 
   // Show random preview
-  const preview = createRandom(palette, effectiveGrid(), tetrisMode, tetrisDivisions, effectiveAspect());
+  const preview = createRandom(palette, effectiveGrid(), tetrisMode, tetrisDivisions, effectiveAspect(), squareMode, squareDivisions);
   renderBest(preview, palette, bestCanvas, bgColour);
+  applyFilterToBest();
 
   // Clear chart
   const ctx = chartCanvas.getContext('2d');
@@ -326,6 +452,9 @@ function exportPNG() {
   exportCanvas.height = exportH;
   const ctx = exportCanvas.getContext('2d');
   renderIndividual(ctx, best, palette, exportW, exportH, bgColour);
+  if (filterEnabled) {
+    applyAnalogueFilter(ctx, exportW, exportH, { grainAmount, vignetteAmount });
+  }
 
   const link = document.createElement('a');
   link.download = `composition-gen${engine.generation}.png`;
@@ -345,6 +474,7 @@ function updateDisplay() {
   const best = engine.getBest();
   const displayInd = selectedIndividual || best;
   renderBest(displayInd, palette, bestCanvas, bgColour);
+  applyFilterToBest();
   renderScoreBreakdown(bestScores, displayInd?.scores, weights);
 
   // Render population grid every few generations
@@ -362,6 +492,7 @@ function updateDisplay() {
         if (topN[idx]) {
           selectedIndividual = topN[idx];
           renderBest(selectedIndividual, palette, bestCanvas, bgColour);
+          applyFilterToBest();
           renderScoreBreakdown(bestScores, selectedIndividual.scores, weights);
         }
       };
@@ -476,6 +607,10 @@ document.addEventListener('keydown', (e) => {
     case 'KeyT':
       tetrisToggle.checked = !tetrisToggle.checked;
       tetrisToggle.dispatchEvent(new Event('change'));
+      break;
+    case 'KeyS':
+      squareToggle.checked = !squareToggle.checked;
+      squareToggle.dispatchEvent(new Event('change'));
       break;
     case 'Escape':
       // Deselect individual, show best

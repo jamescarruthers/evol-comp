@@ -11,6 +11,7 @@ import { scoreDetail } from './detail.js';
 import { scoreClumping } from './clumping.js';
 import { scoreDetailClumping } from './detailClumping.js';
 import { tetrisToRects } from '../genome/tetris.js';
+import { squareToRects } from '../genome/square.js';
 import { computeVisibility } from './visibility.js';
 
 export const DEFAULT_WEIGHTS = {
@@ -37,9 +38,11 @@ export const DEFAULT_WEIGHTS = {
  * @returns {number} fitness score 0–1
  */
 export function evaluate(individual, palette, weights = DEFAULT_WEIGHTS, bgColour = '#f5f5f0', aspectRatio = 1) {
-  // For tetris individuals, create a proxy with pseudo-rectangles for fitness
+  // For grid-based individuals, create a proxy with pseudo-rectangles for fitness
   let proxy = individual;
-  if (individual.mode === 'tetris') {
+  if (individual.mode === 'square') {
+    proxy = { rectangles: squareToRects(individual) };
+  } else if (individual.mode === 'tetris') {
     proxy = { rectangles: tetrisToRects(individual) };
   }
 
