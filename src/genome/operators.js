@@ -2,6 +2,7 @@
 
 import { RECT_COUNT_MIN, RECT_COUNT_MAX, cloneIndividual, snapToGrid } from './representation.js';
 import { crossoverTetris, mutateTetris } from './tetris.js';
+import { crossoverSquare, mutateSquare } from './square.js';
 
 /**
  * Gaussian random with mean 0 and given standard deviation.
@@ -95,6 +96,11 @@ export function spatialCrossover(parentA, parentB, paletteLength, aspectRatio = 
  * @param {number} aspectRatio - canvas width/height ratio
  */
 export function crossover(parentA, parentB, paletteLength, gridDivisions = 0, aspectRatio = 1) {
+  // Square mode dispatch
+  if (parentA.mode === 'square' && parentB.mode === 'square') {
+    return crossoverSquare(parentA, parentB);
+  }
+
   // Tetris mode dispatch
   if (parentA.mode === 'tetris' && parentB.mode === 'tetris') {
     return crossoverTetris(parentA, parentB, paletteLength);
@@ -132,6 +138,11 @@ export const DEFAULT_MUTATION_TOGGLES = { colour: true, size: true, position: tr
  */
 export function mutate(individual, mutationRate, paletteLength, gridDivisions = 0, aspectRatio = 1, mutationToggles = DEFAULT_MUTATION_TOGGLES) {
   const mt = mutationToggles || DEFAULT_MUTATION_TOGGLES;
+
+  if (individual.mode === 'square') {
+    mutateSquare(individual, mutationRate, paletteLength, mt);
+    return;
+  }
 
   if (individual.mode === 'tetris') {
     mutateTetris(individual, mutationRate, paletteLength, mt);

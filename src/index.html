@@ -62,6 +62,32 @@
         <span class="setting-val" id="val-tetris-divisions">1</span>
         <span class="setting-val setting-hint">Nesting depth &mdash; higher = nested detail areas</span>
       </div>
+      <div class="setting-row">
+        <label for="square-toggle">Square Mode</label>
+        <input type="checkbox" id="square-toggle">
+        <span class="setting-val setting-hint" id="val-square-mode">Axis-aligned squares of varying sizes</span>
+      </div>
+      <div class="setting-row" id="square-divisions-row" style="display:none">
+        <label for="square-divisions">Square Divisions</label>
+        <input type="range" id="square-divisions" min="1" max="4" step="1" value="1">
+        <span class="setting-val" id="val-square-divisions">1</span>
+        <span class="setting-val setting-hint">Nesting depth &mdash; higher = nested detail areas</span>
+      </div>
+      <div class="setting-row">
+        <label for="filter-toggle">Analogue Filter</label>
+        <input type="checkbox" id="filter-toggle">
+        <span class="setting-val setting-hint" id="val-filter-mode">Film grain + vignette for an organic look</span>
+      </div>
+      <div class="setting-row" id="grain-row" style="display:none">
+        <label for="grain-amount">Grain</label>
+        <input type="range" id="grain-amount" min="0" max="1" step="0.05" value="0.25">
+        <span class="setting-val" id="val-grain-amount">0.25</span>
+      </div>
+      <div class="setting-row" id="vignette-row" style="display:none">
+        <label for="vignette-amount">Vignette</label>
+        <input type="range" id="vignette-amount" min="0" max="1" step="0.05" value="0.40">
+        <span class="setting-val" id="val-vignette-amount">0.40</span>
+      </div>
     </section>
 
     <main>

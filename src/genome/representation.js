@@ -1,6 +1,7 @@
 // genome/representation.js — Genome encoding/decoding
 
 import { createRandomTetris, cloneTetrisIndividual } from './tetris.js';
+import { createRandomSquare, cloneSquareIndividual } from './square.js';
 
 export const RECT_COUNT_MIN = 5;
 export const RECT_COUNT_MAX = 20;
@@ -61,7 +62,11 @@ export function snapToGrid(rect, gridDivisions) {
  * @param {number} tetrisDivisions - nesting depth for tetris (1 = flat, 2+ = nested)
  * @returns {Object} individual with rectangles array and null fitness
  */
-export function createRandom(palette, gridDivisions = 0, tetrisMode = false, tetrisDivisions = 1, aspectRatio = 1) {
+export function createRandom(palette, gridDivisions = 0, tetrisMode = false, tetrisDivisions = 1, aspectRatio = 1, squareMode = false, squareDivisions = 1) {
+  if (squareMode) {
+    const gs = gridDivisions > 0 ? gridDivisions : 8;
+    return createRandomSquare(palette, gs, squareDivisions, aspectRatio);
+  }
   if (tetrisMode) {
     const gs = gridDivisions > 0 ? gridDivisions : 8;
     return createRandomTetris(palette, gs, tetrisDivisions, aspectRatio);
@@ -88,6 +93,9 @@ export function createRandom(palette, gridDivisions = 0, tetrisMode = false, tet
  * Deep-clone an individual (rectangle or tetris mode).
  */
 export function cloneIndividual(individual) {
+  if (individual.mode === 'square') {
+    return cloneSquareIndividual(individual);
+  }
   if (individual.mode === 'tetris') {
     return cloneTetrisIndividual(individual);
   }
@@ -107,10 +115,10 @@ export function cloneIndividual(individual) {
  * @param {number} tetrisDivisions - nesting depth for tetris (1 = flat, 2+ = nested)
  * @returns {Array} population array
  */
-export function createPopulation(size, palette, gridDivisions = 0, tetrisMode = false, tetrisDivisions = 1, aspectRatio = 1) {
+export function createPopulation(size, palette, gridDivisions = 0, tetrisMode = false, tetrisDivisions = 1, aspectRatio = 1, squareMode = false, squareDivisions = 1) {
   const population = [];
   for (let i = 0; i < size; i++) {
-    population.push(createRandom(palette, gridDivisions, tetrisMode, tetrisDivisions, aspectRatio));
+    population.push(createRandom(palette, gridDivisions, tetrisMode, tetrisDivisions, aspectRatio, squareMode, squareDivisions));
   }
   return population;
 }
