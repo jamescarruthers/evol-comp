@@ -6,6 +6,7 @@ import { DEFAULT_WEIGHTS } from './fitness/index.js';
 import { renderBest, renderGrid, renderChart, renderScoreBreakdown } from './renderer/display.js';
 import { renderIndividual } from './renderer/canvas.js';
 import { applyAnalogueFilter } from './renderer/filter.js';
+import { applyPixelArtFilter } from './renderer/xbr.js';
 import { createRandom } from './genome/representation.js';
 
 // ---- Aspect Ratio Presets ----
@@ -41,6 +42,8 @@ let blurAmount = 0;
 let sharpenAmount = 0;
 let grainAmount = 0.25;
 let vignetteAmount = 0.40;
+let pixelFilterEnabled = false;
+let pixelFilterScale = 4;
 let currentAspect = '1:1';
 let mutationToggles = { colour: true, size: true, position: true };
 let generationInFlight = false; // true while async generation is computing
@@ -86,6 +89,9 @@ const grainRow = document.getElementById('grain-row');
 const vignetteSlider = document.getElementById('vignette-amount');
 const vignetteVal = document.getElementById('val-vignette-amount');
 const vignetteRow = document.getElementById('vignette-row');
+const pixelFilterToggle = document.getElementById('pixel-filter-toggle');
+const pixelScaleSelect = document.getElementById('pixel-scale');
+const pixelScaleRow = document.getElementById('pixel-scale-row');
 const aspectRatioSelect = document.getElementById('aspect-ratio');
 const toggleMutateColour = document.getElementById('toggle-mutate-colour');
 const toggleMutateSize = document.getElementById('toggle-mutate-size');
@@ -244,16 +250,21 @@ tetrisDivisionsSlider.addEventListener('input', () => {
 });
 
 // ---- Analogue Filter ----
-/** Apply analogue filter to the best-canvas if enabled. */
+/** Apply pixel filter and/or analogue filter to the best-canvas if enabled. */
 function applyFilterToBest() {
-  if (!filterEnabled) return;
+  if (!pixelFilterEnabled && !filterEnabled) return;
   const ctx = bestCanvas.getContext('2d');
-  applyAnalogueFilter(ctx, bestCanvas.width, bestCanvas.height, {
-    blurAmount,
-    sharpenAmount,
-    grainAmount,
-    vignetteAmount
-  });
+  if (pixelFilterEnabled) {
+    applyPixelArtFilter(ctx, bestCanvas.width, bestCanvas.height, { scaleFactor: pixelFilterScale });
+  }
+  if (filterEnabled) {
+    applyAnalogueFilter(ctx, bestCanvas.width, bestCanvas.height, {
+      blurAmount,
+      sharpenAmount,
+      grainAmount,
+      vignetteAmount
+    });
+  }
 }
 
 filterToggle.addEventListener('change', () => {
@@ -308,6 +319,28 @@ blurSlider.addEventListener('input', () => {
 sharpenSlider.addEventListener('input', () => {
   sharpenAmount = parseFloat(sharpenSlider.value);
   sharpenVal.textContent = sharpenAmount.toFixed(2);
+
+  const displayInd = selectedIndividual || (engine ? engine.getBest() : null);
+  if (displayInd) {
+    renderBest(displayInd, palette, bestCanvas, bgColour);
+    applyFilterToBest();
+  }
+});
+
+// ---- Pixel Filter ----
+pixelFilterToggle.addEventListener('change', () => {
+  pixelFilterEnabled = pixelFilterToggle.checked;
+  pixelScaleRow.style.display = pixelFilterEnabled ? 'flex' : 'none';
+
+  const displayInd = selectedIndividual || (engine ? engine.getBest() : null);
+  if (displayInd) {
+    renderBest(displayInd, palette, bestCanvas, bgColour);
+    applyFilterToBest();
+  }
+});
+
+pixelScaleSelect.addEventListener('change', () => {
+  pixelFilterScale = parseInt(pixelScaleSelect.value, 10);
 
   const displayInd = selectedIndividual || (engine ? engine.getBest() : null);
   if (displayInd) {
@@ -487,6 +520,9 @@ function exportPNG() {
   exportCanvas.height = exportH;
   const ctx = exportCanvas.getContext('2d');
   renderIndividual(ctx, best, palette, exportW, exportH, bgColour);
+  if (pixelFilterEnabled) {
+    applyPixelArtFilter(ctx, exportW, exportH, { scaleFactor: pixelFilterScale });
+  }
   if (filterEnabled) {
     applyAnalogueFilter(ctx, exportW, exportH, { blurAmount, sharpenAmount, grainAmount, vignetteAmount });
   }
