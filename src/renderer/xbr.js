@@ -15,11 +15,15 @@
  * sampling (creates hard pixel edges), then upscales back using the xBR
  * algorithm which intelligently smooths those edges.
  *
+ * For factors beyond 4x, the downscale uses the full factor but xBR is
+ * applied in chained passes (e.g. 8x = downscale 8x → xBR 2x → xBR 4x,
+ * 16x = downscale 16x → xBR 4x → xBR 4x).
+ *
  * @param {CanvasRenderingContext2D} ctx
  * @param {number} width  - canvas width in pixels
  * @param {number} height - canvas height in pixels
  * @param {Object} options
- * @param {number} options.scaleFactor - 2, 3, or 4 (default 4)
+ * @param {number} options.scaleFactor - 2, 3, 4, 6, 8, 12, or 16 (default 4)
  */
 export function applyPixelArtFilter(ctx, width, height, options = {}) {
   const scale = options.scaleFactor || 4;
@@ -33,26 +37,46 @@ export function applyPixelArtFilter(ctx, width, height, options = {}) {
   const imageData = ctx.getImageData(0, 0, width, height);
 
   // 2. Nearest-neighbor downsample to create hard pixel edges
-  const smallPixels = nearestNeighborDownscale(imageData.data, width, height, smallW, smallH);
+  let pixels = nearestNeighborDownscale(imageData.data, width, height, smallW, smallH);
+  let curW = smallW;
+  let curH = smallH;
 
-  // 3. Apply xBR upscaling
-  const xbrFn = scale === 2 ? xbr2x : scale === 3 ? xbr3x : xbr4x;
-  const scaledPixels = xbrFn(smallPixels, smallW, smallH);
-  const scaledW = smallW * scale;
-  const scaledH = smallH * scale;
+  // 3. Plan xBR passes to upscale back towards original size.
+  //    Decompose the scale factor into a sequence of 2x/3x/4x steps.
+  const passes = decomposeFactor(scale);
+
+  for (const step of passes) {
+    const xbrFn = step === 2 ? xbr2x : step === 3 ? xbr3x : xbr4x;
+    pixels = xbrFn(pixels, curW, curH);
+    curW *= step;
+    curH *= step;
+  }
 
   // 4. Write result back to the canvas
-  // The scaled size may differ from the original due to rounding,
-  // so we use an offscreen canvas + drawImage to stretch to exact size.
-  const offscreen = new OffscreenCanvas(scaledW, scaledH);
+  const offscreen = new OffscreenCanvas(curW, curH);
   const offCtx = offscreen.getContext('2d');
-  const outData = offCtx.createImageData(scaledW, scaledH);
-  uint32ToRgba(scaledPixels, outData.data);
+  const outData = offCtx.createImageData(curW, curH);
+  uint32ToRgba(pixels, outData.data);
   offCtx.putImageData(outData, 0, 0);
 
-  // Stretch to original canvas dimensions (smooth scaling for minor size differences)
+  // Stretch to original canvas dimensions (handles rounding from non-divisible sizes)
   ctx.clearRect(0, 0, width, height);
   ctx.drawImage(offscreen, 0, 0, width, height);
+}
+
+/**
+ * Decompose a total scale factor into a sequence of 2x/3x/4x xBR passes.
+ * E.g. 8 → [4, 2], 12 → [4, 3], 16 → [4, 4], 6 → [3, 2].
+ */
+function decomposeFactor(n) {
+  const passes = [];
+  while (n > 1) {
+    if (n % 4 === 0) { passes.push(4); n /= 4; }
+    else if (n % 3 === 0) { passes.push(3); n /= 3; }
+    else if (n % 2 === 0) { passes.push(2); n /= 2; }
+    else { passes.push(4); break; } // fallback for odd factors
+  }
+  return passes;
 }
 
 // ---- Pixel format conversion ----
